@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>Listening</title>
+<style>
+  :root{
+    --sans:"Helvetica Neue",Arial,"Segoe UI",Roboto,sans-serif;
+    --ink:#000;
+    --line:#8a8a8a;
+    --faint:#d8d8d8;
+    --dim:#555;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;min-height:100%;background:#fff;color:var(--ink)}
+  body{font-family:var(--sans);display:flex;flex-direction:column;align-items:center;
+       padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 10px);
+       -webkit-user-select:none;user-select:none}
+
+  .top{width:100%;max-width:430px}
+  .count{font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+         display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .count .of{font-weight:400;color:var(--line)}
+  .bar{height:1px;background:var(--faint)}
+
+  .stage{width:100%;max-width:430px;padding:12px 0}
+  .card{border:1px solid var(--line);background:#fff;padding:18px 18px 6px}
+  .fam{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
+       color:var(--line);margin:0 0 8px}
+  .fam::before{content:"\2756";margin-right:7px;font-weight:400}
+  .v{font-size:26px;font-weight:700;line-height:1.05;letter-spacing:-.3px;margin:0 0 6px}
+
+  .list{margin:0;padding:0;list-style:none}
+  .list li{border-top:1px solid var(--faint)}
+  .list a{display:grid;grid-template-columns:auto 1fr auto;column-gap:14px;align-items:baseline;
+          padding:13px 4px 12px;color:var(--ink);text-decoration:none}
+  .list a:active{background:var(--ink);color:#fff}
+  .list a:active .num,.list a:active .tag,.list a:active .when{color:#fff}
+  .num{font-size:13px;color:var(--line);font-variant-numeric:tabular-nums}
+  .t{font-size:18px;line-height:1.25}
+  .tag{grid-column:2;font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
+       color:var(--line);margin-top:4px}
+  .when{grid-column:3;grid-row:1;font-size:11px;letter-spacing:.6px;text-transform:uppercase;
+        color:var(--line);white-space:nowrap}
+  .when.new{color:var(--ink);font-weight:700}
+  .empty{font-size:14px;color:var(--dim);padding:12px 0 18px;border-top:1px solid var(--faint)}
+
+  .hint{font-size:10.5px;color:var(--line);text-align:center;margin:7px 0 0;letter-spacing:.3px}
+  @media (min-height:760px){.v{font-size:32px}.card{padding:24px 22px 8px}.t{font-size:20px}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="count"><span>Listening</span><span class="of">1 story</span></div>
+  <div class="bar"></div>
+</div>
+
+<div class="stage">
+  <div class="card">
+    <p class="fam">French &middot; listen and read</p>
+    <p class="v">Stories</p>
+    <ul class="list" id="list"></ul>
+  </div>
+</div>
+<p class="hint">Tap a story to open it</p>
+
+<script>
+const STORIES = [{"slug": "001_une_journee_a_lyon", "number": "001", "title": "Une journée à Lyon", "level": "A2", "tense": "présent", "words": 200, "sentences": 20}];
+const list = document.getElementById('list');
+
+function ago(ms){
+  const d = Math.floor((Date.now() - ms) / 86400000);
+  if (d < 1) return 'today';
+  if (d === 1) return 'yesterday';
+  if (d < 7) return d + ' d ago';
+  if (d < 30) return Math.floor(d / 7) + ' w ago';
+  return Math.floor(d / 30) + ' mo ago';
+}
+function listened(slug){
+  try { const v = localStorage.getItem('listened:' + slug); return v ? +v : null; }
+  catch (e) { return null; }
+}
+
+if (!STORIES.length) {
+  list.insertAdjacentHTML('afterend', '<p class="empty">No stories yet.</p>');
+}
+STORIES.forEach(s => {
+  const li = document.createElement('li'), a = document.createElement('a');
+  a.href = s.slug + '.html';
+  const at = listened(s.slug);
+  a.innerHTML =
+    `<span class="num">${s.number}</span>` +
+    `<span class="t">${s.title}</span>` +
+    `<span class="when${at ? '' : ' new'}">${at ? ago(at) : 'new'}</span>` +
+    `<span class="tag">${s.level} &middot; ${s.tense} &middot; ${s.words} words</span>`;
+  li.appendChild(a); list.appendChild(li);
+});
+</script>
+</body>
+</html>
