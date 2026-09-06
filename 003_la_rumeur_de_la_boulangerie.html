@@ -58,7 +58,15 @@
   .body::-webkit-scrollbar-thumb{background:var(--faint)}
   .body:hover::-webkit-scrollbar-thumb{background:var(--line)}
   .body .sec{margin-top:22px}
-  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s}
+  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s;
+        -webkit-touch-callout:none}
+  .veil{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;
+        padding:0 14px calc(env(safe-area-inset-bottom) + 76px);background:transparent}
+  .pop{width:100%;max-width:430px;border:1px solid var(--line);background:#fff;padding:18px 18px 16px}
+  .pop .fam{margin-bottom:10px}
+  .pop .fr{font-size:14px;line-height:1.5;color:var(--dim);margin:0 0 10px;padding-bottom:10px;
+           border-bottom:1px solid var(--faint)}
+  .pop .en{font-size:18px;line-height:1.5;margin:0}
   .pair{display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:5px;margin:0}
   .pair dt{font-size:14px;color:var(--dim);white-space:nowrap}
   .pair dd{font-size:14px;margin:0}
@@ -115,7 +123,15 @@
   <button id="next" aria-label="Next sentence"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <button id="loop" aria-label="Repeat sentence" title="Repeat"><svg viewBox="0 0 24 24"><path d="M18.4 8.6A7 7 0 1 0 19 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19 5v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
-<p class="hint">Tap a sentence to play it &middot; the last button repeats the sentence</p>
+<p class="hint">Tap a sentence to play it &middot; hold it for the translation &middot; the last button repeats</p>
+
+<div class="veil" id="veil" hidden>
+  <div class="pop" role="dialog" aria-label="Translation">
+    <p class="fam">Translation</p>
+    <p class="fr" id="popFr"></p>
+    <p class="en" id="popEn"></p>
+  </div>
+</div>
 
 <script>
 const PACES = ["Slow", "Medium", "Normal"];
@@ -125,6 +141,7 @@ const N = S.length;
 const ICON_PLAY  = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5.5h3.5v13H7zM13.5 5.5H17v13h-3.5z" fill="currentColor"/></svg>';
 const VOCAB = [["la file (s)", "queue, line"], ["fidèle", "loyal, faithful"], ["le costume (s)", "suit"], ["la banque (s)", "bank"], ["l'attention (s, f)", "attention"], ["la nouvelle (s)", "the news"], ["prêt", "ready"], ["la moitié (s)", "half"], ["inquiet, inquiète", "worried"], ["le notaire (s)", "notary"], ["la vérité (s)", "truth"], ["l'habitude (s, f)", "habit"], ["le loyer (s)", "rent"], ["la vitrine (s)", "shop window"], ["la prédiction (s)", "prediction"], ["la fermeture (s)", "closure"]], VERBS = [["avoir (il y a)", "to have"], ["appartenir (appartient)", "to belong"], ["être (est)", "to be"], ["attendre (attend)", "to wait"], ["s'appeler (s'appelle)", "to be called"], ["voir (voit)", "to see"], ["parler (parle)", "to speak"], ["comprendre (comprend)", "to understand"], ["imaginer (imagine)", "to imagine"], ["dire (dit)", "to say"], ["croire (je crois)", "to believe"], ["écouter (écoutent)", "to listen"], ["raconter (raconte)", "to tell"], ["grandir (grandit)", "to grow"], ["connaître (connaît)", "to know"], ["fermer (ferme)", "to close"], ["savoir (sait)", "to know"], ["venir (vient)", "to come"], ["répéter (répète)", "to repeat"], ["réfléchir (réfléchissent)", "to think it over"], ["penser (pense)", "to think"], ["devoir (je dois)", "to have to"], ["trouver (trouver)", "to find"], ["pouvoir (je peux)", "to be able to"], ["essayer (essayer)", "to try"], ["vouloir (veulent)", "to want"], ["vendre (vend)", "to sell"], ["jeter (jette)", "to throw away"], ["perdre (perd)", "to lose"], ["dormir (dort)", "to sleep"], ["entrer (entre)", "to enter"], ["demander (demande)", "to ask"], ["répondre (répond)", "to answer"], ["expliquer (explique)", "to explain"], ["rire (rit)", "to laugh"], ["acheter (achètent)", "to buy"], ["revenir (reviennent)", "to come back"], ["compter (compte)", "to count"], ["payer (payer)", "to pay"], ["passer (passe)", "to pass by"], ["lire (lit)", "to read"], ["créer (crée)", "to create"], ["annoncer (annonce)", "to announce"], ["causer (cause)", "to cause"], ["pousser (pousse)", "to push"]];
+const T = ["In the small town of Rives, there is a bakery on the square.", "It belongs to Madame Roux.", "Her bread is good, her croissants are warm at seven, and the customers are loyal.", "Every morning, a long queue waits in front of the door.", "One Tuesday, a customer called Gilles is waiting in the queue.", "He sees Madame Roux talking to a man in a suit.", "The man has papers in his hand.", "Gilles does not understand the conversation, but he imagines many things.", "At the café, an hour later, he tells his friends: \"I think the bakery has problems.", "A man from the bank is there this morning, with papers.\"", "That is not information, it is an idea.", "But his friends listen closely.", "In the evening, Gilles's wife tells the story to her sister.", "The sister tells the story to her colleagues.", "Each time, the story grows a little.", "On Wednesday, the whole town knows the news: the bakery is closing soon.", "Nobody knows where this information comes from, but everyone repeats it.", "On Thursday, the customers think it over.", "Léa thinks: \"If the bakery closes, I have to find another bakery.", "I can try the one on rue Neuve starting today.\"", "She is not the only one.", "Many customers think the same thing.", "They want to be ready.", "The queue in front of Madame Roux's bakery is short that morning.", "On Friday, it is even shorter.", "Madame Roux does not understand.", "Her bread is the same, her price is the same.", "But she sells half her bread, and in the evening she throws away many baguettes.", "After two weeks, she loses money every day.", "She is worried, and she sleeps badly.", "A loyal customer, old Monsieur Faure, walks into the empty bakery.", "He asks: \"Madame Roux, is it true?", "Are you closing?\"", "She answers, surprised: \"Closing?", "No!", "Why that question?\"", "Monsieur Faure explains: \"The whole town says you are closing.", "The whole town is talking about a man from the bank, with papers.\"", "Madame Roux laughs, then she is sad.", "\"That man is my cousin.", "He is a notary.", "We are talking about my mother's house, that's all.\"", "Monsieur Faure tells the truth at the café, but the rumour is faster than the truth.", "The old customers now have a new habit.", "They buy their bread on rue Neuve.", "Not all of them come back.", "At the end of the month, Madame Roux counts her money.", "She does not have enough to pay the rent.", "She closes the bakery.", "Gilles walks past the closed door.", "He reads the small note in the window: \"Thank you for these twenty years.\"", "He thinks about his sentence at the café.", "That day, the bakery had no problems.", "But his sentence created the problem.", "The rumour announced the closure, and the rumour caused the closure.", "Monsieur Faure walks past too.", "He says to Gilles: \"A prediction is not always a picture of the future.", "Sometimes it is a hand that pushes the future.\""];
 function fillList(id, rows){
   const dl = document.getElementById(id);
   if (!rows.length) { dl.previousElementSibling.remove(); dl.remove(); return; }
@@ -199,12 +216,48 @@ playB.onclick = () => playing ? pause() : playCur();
 prevB.onclick = () => jump(cur - 1);
 nextB.onclick = () => jump(cur + 1);
 loopB.onclick = () => { loop = !loop; render(); };
-textEl.onclick = e => { const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i); };
+/* long press on a sentence shows its translation; a short tap plays it */
+const veil = document.getElementById('veil');
+const popFr = document.getElementById('popFr'), popEn = document.getElementById('popEn');
+let pressTimer = null, pressX = 0, pressY = 0, suppressClick = false;
+
+function showTranslation(i){
+  popFr.textContent = S[i];
+  popEn.textContent = T[i] || 'No translation for this sentence.';
+  veil.hidden = false;
+}
+function hideTranslation(){ veil.hidden = true; }
+function cancelPress(){ if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
+textEl.addEventListener('pointerdown', e => {
+  const sp = e.target.closest('span'); if (!sp || !veil.hidden) return;
+  pressX = e.clientX; pressY = e.clientY;
+  cancelPress();
+  pressTimer = setTimeout(() => {
+    pressTimer = null; suppressClick = true;
+    showTranslation(+sp.dataset.i);
+  }, 450);
+});
+textEl.addEventListener('pointermove', e => {
+  if (pressTimer && Math.hypot(e.clientX - pressX, e.clientY - pressY) > 10) cancelPress();
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(n => textEl.addEventListener(n, cancelPress));
+document.getElementById('body').addEventListener('scroll', cancelPress, {passive: true});
+textEl.addEventListener('contextmenu', e => e.preventDefault());
+
+textEl.onclick = e => {
+  if (suppressClick) { suppressClick = false; return; }
+  const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i);
+};
+veil.addEventListener('pointerdown', e => { e.preventDefault(); hideTranslation(); });
+veil.addEventListener('click', e => e.preventDefault());
 toggleB.onclick = () => {
   const hidden = textEl.classList.toggle('hidden');
   toggleB.textContent = hidden ? 'Show' : 'Hide';
 };
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') return hideTranslation();
+  if (e.key === 't') return veil.hidden ? showTranslation(cur) : hideTranslation();
   if (e.key === ' ') { e.preventDefault(); playB.onclick(); }
   else if (e.key === 'ArrowLeft') jump(cur - 1);
   else if (e.key === 'ArrowRight') jump(cur + 1);

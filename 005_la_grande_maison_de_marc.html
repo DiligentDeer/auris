@@ -58,7 +58,15 @@
   .body::-webkit-scrollbar-thumb{background:var(--faint)}
   .body:hover::-webkit-scrollbar-thumb{background:var(--line)}
   .body .sec{margin-top:22px}
-  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s}
+  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s;
+        -webkit-touch-callout:none}
+  .veil{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;
+        padding:0 14px calc(env(safe-area-inset-bottom) + 76px);background:transparent}
+  .pop{width:100%;max-width:430px;border:1px solid var(--line);background:#fff;padding:18px 18px 16px}
+  .pop .fam{margin-bottom:10px}
+  .pop .fr{font-size:14px;line-height:1.5;color:var(--dim);margin:0 0 10px;padding-bottom:10px;
+           border-bottom:1px solid var(--faint)}
+  .pop .en{font-size:18px;line-height:1.5;margin:0}
   .pair{display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:5px;margin:0}
   .pair dt{font-size:14px;color:var(--dim);white-space:nowrap}
   .pair dd{font-size:14px;margin:0}
@@ -115,7 +123,15 @@
   <button id="next" aria-label="Next sentence"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <button id="loop" aria-label="Repeat sentence" title="Repeat"><svg viewBox="0 0 24 24"><path d="M18.4 8.6A7 7 0 1 0 19 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19 5v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
-<p class="hint">Tap a sentence to play it &middot; the last button repeats the sentence</p>
+<p class="hint">Tap a sentence to play it &middot; hold it for the translation &middot; the last button repeats</p>
+
+<div class="veil" id="veil" hidden>
+  <div class="pop" role="dialog" aria-label="Translation">
+    <p class="fam">Translation</p>
+    <p class="fr" id="popFr"></p>
+    <p class="en" id="popEn"></p>
+  </div>
+</div>
 
 <script>
 const PACES = ["Slow", "Medium", "Normal"];
@@ -125,6 +141,7 @@ const N = S.length;
 const ICON_PLAY  = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5.5h3.5v13H7zM13.5 5.5H17v13h-3.5z" fill="currentColor"/></svg>';
 const VOCAB = [["l'ascenseur (s, m)", "lift, elevator"], ["le salaire (s)", "salary"], ["malheureux", "unhappy"], ["le rêve (s)", "dream"], ["le cerisier (s)", "cherry tree"], ["bruyant", "noisy"], ["le bonheur (s)", "happiness"], ["le niveau (s)", "level"], ["le trou (s)", "hole"], ["les chambres (p)", "bedrooms"], ["les étoiles (p)", "stars"], ["avoir envie de", "to feel like, to want"], ["le tricot (s)", "knitting"], ["la joie (s)", "joy"], ["le tapis roulant (s)", "treadmill"], ["l'endroit (s, m)", "place, spot"]], VERBS = [["habiter (habite)", "to live"], ["travailler (travaille)", "to work"], ["gagner (gagne)", "to earn"], ["être (est)", "to be"], ["avoir (a)", "to have"], ["regarder (regarde)", "to look at"], ["penser (pense)", "to think"], ["acheter (achète)", "to buy"], ["boire (boit)", "to drink"], ["téléphoner (téléphone)", "to phone"], ["dire (dit)", "to say"], ["passer (passent)", "to pass, to go by"], ["devenir (devient)", "to become"], ["demander (demande)", "to ask, to require"], ["remarquer (remarque)", "to notice"], ["revenir (revient)", "to come back"], ["dormir (dort)", "to sleep"], ["vendre (vend)", "to sell"], ["nager (nage)", "to swim"], ["inviter (invite)", "to invite"], ["coûter (coûte)", "to cost"], ["chauffer (chauffer)", "to heat"], ["rentrer (rentre)", "to come home"], ["venir (vient)", "to come"], ["déjeuner (déjeuner)", "to have lunch"], ["rire (rit)", "to laugh"], ["rendre (rend)", "to make, to give back"], ["réfléchir (réfléchit)", "to think it over"], ["comprendre (comprend)", "to understand"], ["donner (donne)", "to give"], ["disparaître (disparaît)", "to disappear"], ["courir (court)", "to run"], ["rester (reste)", "to stay"], ["dîner (dînent)", "to have dinner"]];
+const T = ["Marc lives in a small flat in town, on the third floor, with no lift.", "He works in an office and earns a decent salary.", "He is not unhappy, but he has a dream: a house with a garden.", "Every evening, he looks at photos of houses on his phone.", "He thinks: \"With a house, I will finally be happy.\"", "After five years of work, Marc buys a small house in the countryside, with a garden and a cherry tree.", "The first morning, he drinks his coffee under the cherry tree.", "He is very happy.", "He phones his mother and says: \"Mum, this is the best day of my life.\"", "For a month, every morning is a celebration.", "Then the weeks go by.", "Coffee under the cherry tree becomes normal.", "The garden needs work.", "Marc notices things: the kitchen is small, the neighbour has a pool, the road is noisy.", "He is no longer unhappy, but he is no longer very happy either.", "He is as he was before.", "His happiness returns to its usual level, like water returning to fill a hole.", "Marc has a new idea.", "\"The house is too small.", "With a big house, I will really be happy.\"", "He works more, he sleeps less.", "After six years, he sells the small house and buys a big house with four bedrooms, a pool and a garage.", "The first evening, he swims in his pool under the stars.", "It is magnificent.", "For two months, he invites all his friends.", "Then, once again, everything becomes normal.", "The pool needs a lot of work.", "The big house is expensive to heat.", "Marc comes home late, tired, and almost never swims.", "He looks at photos on his phone again.", "Houses by the sea, this time.", "He is forty-five, and he still thinks happiness is in the next house.", "One Sunday, his mother comes for lunch.", "She is seventy-five, and she still lives in the same small flat she has had for forty years.", "Marc asks her: \"Mum, don't you want a bigger place?\"", "She laughs.", "\"Why?", "My flat has kept me happy for forty years.", "Well, no.", "It is not the flat.", "It is coffee with my neighbour, the walk to the market, knitting in the evening.", "Those things never become normal, because they are different every day.\"", "Marc thinks.", "He looks at his empty pool and his big garage.", "He understands something.", "Each house gives him great joy, then the joy fades, and he runs towards the next house.", "He is like a man on a treadmill.", "He runs, but he stays in the same place.", "That evening, Marc does not look at his phone.", "He phones a friend, and they have dinner together in the garden, under the old cherry tree.", "The cherry tree, for its part, has been there since the beginning."];
 function fillList(id, rows){
   const dl = document.getElementById(id);
   if (!rows.length) { dl.previousElementSibling.remove(); dl.remove(); return; }
@@ -199,12 +216,48 @@ playB.onclick = () => playing ? pause() : playCur();
 prevB.onclick = () => jump(cur - 1);
 nextB.onclick = () => jump(cur + 1);
 loopB.onclick = () => { loop = !loop; render(); };
-textEl.onclick = e => { const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i); };
+/* long press on a sentence shows its translation; a short tap plays it */
+const veil = document.getElementById('veil');
+const popFr = document.getElementById('popFr'), popEn = document.getElementById('popEn');
+let pressTimer = null, pressX = 0, pressY = 0, suppressClick = false;
+
+function showTranslation(i){
+  popFr.textContent = S[i];
+  popEn.textContent = T[i] || 'No translation for this sentence.';
+  veil.hidden = false;
+}
+function hideTranslation(){ veil.hidden = true; }
+function cancelPress(){ if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
+textEl.addEventListener('pointerdown', e => {
+  const sp = e.target.closest('span'); if (!sp || !veil.hidden) return;
+  pressX = e.clientX; pressY = e.clientY;
+  cancelPress();
+  pressTimer = setTimeout(() => {
+    pressTimer = null; suppressClick = true;
+    showTranslation(+sp.dataset.i);
+  }, 450);
+});
+textEl.addEventListener('pointermove', e => {
+  if (pressTimer && Math.hypot(e.clientX - pressX, e.clientY - pressY) > 10) cancelPress();
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(n => textEl.addEventListener(n, cancelPress));
+document.getElementById('body').addEventListener('scroll', cancelPress, {passive: true});
+textEl.addEventListener('contextmenu', e => e.preventDefault());
+
+textEl.onclick = e => {
+  if (suppressClick) { suppressClick = false; return; }
+  const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i);
+};
+veil.addEventListener('pointerdown', e => { e.preventDefault(); hideTranslation(); });
+veil.addEventListener('click', e => e.preventDefault());
 toggleB.onclick = () => {
   const hidden = textEl.classList.toggle('hidden');
   toggleB.textContent = hidden ? 'Show' : 'Hide';
 };
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') return hideTranslation();
+  if (e.key === 't') return veil.hidden ? showTranslation(cur) : hideTranslation();
   if (e.key === ' ') { e.preventDefault(); playB.onclick(); }
   else if (e.key === 'ArrowLeft') jump(cur - 1);
   else if (e.key === 'ArrowRight') jump(cur + 1);

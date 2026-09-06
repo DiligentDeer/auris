@@ -58,7 +58,15 @@
   .body::-webkit-scrollbar-thumb{background:var(--faint)}
   .body:hover::-webkit-scrollbar-thumb{background:var(--line)}
   .body .sec{margin-top:22px}
-  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s}
+  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s;
+        -webkit-touch-callout:none}
+  .veil{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;
+        padding:0 14px calc(env(safe-area-inset-bottom) + 76px);background:transparent}
+  .pop{width:100%;max-width:430px;border:1px solid var(--line);background:#fff;padding:18px 18px 16px}
+  .pop .fam{margin-bottom:10px}
+  .pop .fr{font-size:14px;line-height:1.5;color:var(--dim);margin:0 0 10px;padding-bottom:10px;
+           border-bottom:1px solid var(--faint)}
+  .pop .en{font-size:18px;line-height:1.5;margin:0}
   .pair{display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:5px;margin:0}
   .pair dt{font-size:14px;color:var(--dim);white-space:nowrap}
   .pair dd{font-size:14px;margin:0}
@@ -115,7 +123,15 @@
   <button id="next" aria-label="Next sentence"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <button id="loop" aria-label="Repeat sentence" title="Repeat"><svg viewBox="0 0 24 24"><path d="M18.4 8.6A7 7 0 1 0 19 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19 5v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
-<p class="hint">Tap a sentence to play it &middot; the last button repeats the sentence</p>
+<p class="hint">Tap a sentence to play it &middot; hold it for the translation &middot; the last button repeats</p>
+
+<div class="veil" id="veil" hidden>
+  <div class="pop" role="dialog" aria-label="Translation">
+    <p class="fam">Translation</p>
+    <p class="fr" id="popFr"></p>
+    <p class="en" id="popEn"></p>
+  </div>
+</div>
 
 <script>
 const PACES = ["Slow", "Medium", "Normal"];
@@ -125,6 +141,7 @@ const N = S.length;
 const ICON_PLAY  = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5.5h3.5v13H7zM13.5 5.5H17v13h-3.5z" fill="currentColor"/></svg>';
 const VOCAB = [["le sol (s)", "soil"], ["le blé (s)", "wheat"], ["l'inquiétude (s, f)", "worry"], ["en colère", "angry"], ["les nuages (p)", "clouds"], ["injuste", "unfair"], ["les outils (p)", "tools"], ["les fossés (p)", "ditches"], ["sec, sèche", "dry"], ["les canaux (p)", "channels, canals"], ["la sécheresse (s)", "drought"], ["la récolte (s)", "harvest"], ["les seaux (p)", "buckets"], ["amer, amère", "bitter"], ["la sorte (s)", "kind, sort"], ["le calme (s)", "calm"], ["le sommeil (s)", "sleep"], ["le toit (s)", "roof"]], VERBS = [["avoir (il y a)", "to have"], ["vivre (vivaient)", "to live"], ["planter (plantaient)", "to plant"], ["être (étaient)", "to be"], ["regarder (regardait)", "to look at"], ["pleuvoir (il pleuvait)", "to rain"], ["parler (parlait)", "to speak"], ["crier (criait)", "to shout"], ["dormir (dormait)", "to sleep"], ["expliquer (expliquait)", "to explain"], ["dire (disait)", "to say"], ["appartenir (appartient)", "to belong"], ["creuser (creusait)", "to dig"], ["ouvrir (ouvrait)", "to open"], ["laisser (laisser)", "to let"], ["partir (partir)", "to leave, to go away"], ["jaunir (a jauni)", "to turn yellow"], ["mourir (est mort)", "to die"], ["rester (est resté)", "to stay"], ["maudire (a maudit)", "to curse"], ["changer (a changé)", "to change"], ["penser (pensait)", "to think"], ["souffrir (a souffert)", "to suffer"], ["apporter (ont apporté)", "to bring"], ["perdre (a perdu)", "to lose"], ["garder (a gardé)", "to keep"], ["porter (portait)", "to carry"], ["venir (est venu)", "to come"], ["demander (a demandé)", "to ask"], ["aimer (t'aime)", "to love"], ["répondre (a répondu)", "to answer"], ["passer (as passé)", "to spend time"], ["se mettre en colère (s'est mis en colère)", "to get angry"], ["continuer (a continué)", "to continue"], ["dépendre de (dépendent de)", "to depend on"], ["mettre (met)", "to put"], ["rentrer (est rentré)", "to go home"], ["réparer (a réparé)", "to repair"], ["apprendre (a appris)", "to learn"], ["se plaindre (s'est plaint)", "to complain"], ["écouter (écoute)", "to listen"]];
+const T = ["Long ago, in a village in Provence, there lived two neighbouring farmers, Luc and Mathieu.", "They had the same soil, the same sun and the same river.", "They planted wheat at the same time.", "But they were not the same men.", "Luc looked at the sky every morning with worry.", "When it did not rain, he was angry with the sky.", "When it rained too much, he was angry with the river.", "He talked to the clouds, he shouted at the wind.", "In the evening, he did not sleep, and he explained to his wife that the weather was unfair to him.", "Mathieu also looked at the sky every morning.", "But then he looked at his fields, his tools and his hands.", "He often said: \"The rain does not belong to me.", "My ditches do.\"", "When the weather was dry, he dug channels from the river.", "When it rained too much, he opened his ditches to let the water out.", "In the evening, he slept well.", "One year, the summer was terrible.", "It did not rain for two months.", "Luc's wheat turned yellow, then it died.", "Luc sat in front of his house and cursed the sky every day.", "He changed nothing, because he thought nothing was possible against the drought.", "Mathieu's wheat suffered too.", "But his channels brought a little water from the river, every night.", "Mathieu lost half his harvest.", "He kept the other half.", "While Luc shouted, Mathieu carried buckets.", "In autumn, Luc came to see Mathieu.", "He asked, bitterly: \"Why does the sky love you more than me?", "We have the same sky.\"", "Mathieu answered: \"The sky does not love me more.", "It does not love us at all, neither you nor me.", "It does not think about us.", "But you spent the summer talking to the sky.", "I spent the summer talking to my ditches.\"", "Luc got angry.", "\"That is easy to say!\"", "Mathieu went on gently: \"There are two kinds of things in life.", "The things that depend on us, and the things that do not depend on us.", "The rain, the wind, the price of wheat, the neighbours' opinion, those do not depend on us.", "Our ditches, our tools, our work, our calm, those depend on us.", "A man who puts his anger into the first kind loses his energy and his sleep.", "A man who puts his energy into the second kind keeps at least half his harvest.\"", "Luc went home in silence.", "That winter, he did not talk to the sky.", "He dug channels with Mathieu.", "He repaired his roof.", "He learned to sleep.", "The following summer was dry again.", "But the two farmers kept a good part of their wheat.", "And when a young neighbour complained about the rain, Luc told him, with a small smile: \"The rain is not listening to you.", "Your ditches are.\""];
 function fillList(id, rows){
   const dl = document.getElementById(id);
   if (!rows.length) { dl.previousElementSibling.remove(); dl.remove(); return; }
@@ -199,12 +216,48 @@ playB.onclick = () => playing ? pause() : playCur();
 prevB.onclick = () => jump(cur - 1);
 nextB.onclick = () => jump(cur + 1);
 loopB.onclick = () => { loop = !loop; render(); };
-textEl.onclick = e => { const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i); };
+/* long press on a sentence shows its translation; a short tap plays it */
+const veil = document.getElementById('veil');
+const popFr = document.getElementById('popFr'), popEn = document.getElementById('popEn');
+let pressTimer = null, pressX = 0, pressY = 0, suppressClick = false;
+
+function showTranslation(i){
+  popFr.textContent = S[i];
+  popEn.textContent = T[i] || 'No translation for this sentence.';
+  veil.hidden = false;
+}
+function hideTranslation(){ veil.hidden = true; }
+function cancelPress(){ if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
+textEl.addEventListener('pointerdown', e => {
+  const sp = e.target.closest('span'); if (!sp || !veil.hidden) return;
+  pressX = e.clientX; pressY = e.clientY;
+  cancelPress();
+  pressTimer = setTimeout(() => {
+    pressTimer = null; suppressClick = true;
+    showTranslation(+sp.dataset.i);
+  }, 450);
+});
+textEl.addEventListener('pointermove', e => {
+  if (pressTimer && Math.hypot(e.clientX - pressX, e.clientY - pressY) > 10) cancelPress();
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(n => textEl.addEventListener(n, cancelPress));
+document.getElementById('body').addEventListener('scroll', cancelPress, {passive: true});
+textEl.addEventListener('contextmenu', e => e.preventDefault());
+
+textEl.onclick = e => {
+  if (suppressClick) { suppressClick = false; return; }
+  const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i);
+};
+veil.addEventListener('pointerdown', e => { e.preventDefault(); hideTranslation(); });
+veil.addEventListener('click', e => e.preventDefault());
 toggleB.onclick = () => {
   const hidden = textEl.classList.toggle('hidden');
   toggleB.textContent = hidden ? 'Show' : 'Hide';
 };
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') return hideTranslation();
+  if (e.key === 't') return veil.hidden ? showTranslation(cur) : hideTranslation();
   if (e.key === ' ') { e.preventDefault(); playB.onclick(); }
   else if (e.key === 'ArrowLeft') jump(cur - 1);
   else if (e.key === 'ArrowRight') jump(cur + 1);

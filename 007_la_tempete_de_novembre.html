@@ -58,7 +58,15 @@
   .body::-webkit-scrollbar-thumb{background:var(--faint)}
   .body:hover::-webkit-scrollbar-thumb{background:var(--line)}
   .body .sec{margin-top:22px}
-  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s}
+  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s;
+        -webkit-touch-callout:none}
+  .veil{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;
+        padding:0 14px calc(env(safe-area-inset-bottom) + 76px);background:transparent}
+  .pop{width:100%;max-width:430px;border:1px solid var(--line);background:#fff;padding:18px 18px 16px}
+  .pop .fam{margin-bottom:10px}
+  .pop .fr{font-size:14px;line-height:1.5;color:var(--dim);margin:0 0 10px;padding-bottom:10px;
+           border-bottom:1px solid var(--faint)}
+  .pop .en{font-size:18px;line-height:1.5;margin:0}
   .pair{display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:5px;margin:0}
   .pair dt{font-size:14px;color:var(--dim);white-space:nowrap}
   .pair dd{font-size:14px;margin:0}
@@ -115,7 +123,15 @@
   <button id="next" aria-label="Next sentence"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <button id="loop" aria-label="Repeat sentence" title="Repeat"><svg viewBox="0 0 24 24"><path d="M18.4 8.6A7 7 0 1 0 19 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19 5v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
-<p class="hint">Tap a sentence to play it &middot; the last button repeats the sentence</p>
+<p class="hint">Tap a sentence to play it &middot; hold it for the translation &middot; the last button repeats</p>
+
+<div class="veil" id="veil" hidden>
+  <div class="pop" role="dialog" aria-label="Translation">
+    <p class="fam">Translation</p>
+    <p class="fr" id="popFr"></p>
+    <p class="en" id="popEn"></p>
+  </div>
+</div>
 
 <script>
 const PACES = ["Slow", "Medium", "Normal"];
@@ -125,6 +141,7 @@ const N = S.length;
 const ICON_PLAY  = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5.5h3.5v13H7zM13.5 5.5H17v13h-3.5z" fill="currentColor"/></svg>';
 const VOCAB = [["la tempête (s)", "storm"], ["le toit (s)", "roof"], ["blessé", "injured"], ["les habitants (p)", "inhabitants"], ["évident", "obvious"], ["la pharmacienne (s)", "pharmacist"], ["la veille (s)", "the day before"], ["prévisible", "predictable"], ["la météo (s)", "weather forecast"], ["l'avis (s, m)", "opinion"], ["l'institutrice (s)", "primary school teacher"], ["la bibliothèque (s)", "library"], ["les avertissements (p)", "warnings"], ["le prophète (s)", "prophet"], ["le passé (s)", "the past"], ["la colère (s)", "anger"], ["solide", "sturdy, solid"], ["le pire (s)", "the worst"]], VERBS = [["frapper (a frappé)", "to hit, to strike"], ["casser (a cassé)", "to break"], ["monter (a monté)", "to rise, to go up"], ["tomber (est tombé)", "to fall"], ["être (a été)", "to be"], ["avoir (a eu)", "to have"], ["parler (parlait)", "to speak"], ["dire (disait)", "to say"], ["savoir (je savais)", "to know"], ["hocher la tête (hochaient la tête)", "to nod"], ["sentir (je sentais)", "to feel, to sense"], ["devoir (devait)", "to have to"], ["fermer (fermer)", "to close"], ["penser (pensait)", "to think"], ["comprendre (ne comprenait pas)", "to understand"], ["se souvenir (se souvenait)", "to remember"], ["annoncer (annonçait)", "to announce, to forecast"], ["demander (a demandé)", "to ask"], ["répondre (ont répondu)", "to answer"], ["rire (a ri)", "to laugh"], ["écouter (a écouté)", "to listen"], ["aller (est allée)", "to go"], ["lire (a lu)", "to read"], ["compter (a compté)", "to count"], ["trouver (a trouvé)", "to find"], ["écrire (écrit)", "to write"], ["montrer (a montré)", "to show"], ["rougir (a rougi)", "to blush"], ["connaître (connaissons)", "to know"], ["sembler (semble)", "to seem"], ["prendre (a pris)", "to take"], ["rester (sont restés)", "to stay, to remain"], ["baisser (a baissé)", "to go down"], ["se tromper (s'est trompé)", "to be wrong"], ["pouvoir (peut)", "to be able to"], ["prédire (prédire)", "to predict"], ["préparer (préparer)", "to prepare"]];
+const T = ["Last year, in November, a great storm hit the village of Port-Louis.", "The wind broke trees, the sea rose into the streets, and the school roof fell in.", "Fortunately, nobody was hurt.", "But the village had a real scare.", "The next day, the inhabitants were on the square, in front of the roofless school.", "The baker, Rémi, was talking loudly.", "He was saying: \"I knew it!", "I knew that storm was dangerous.", "The sky had been strange for three days.", "It was obvious!\"", "The others were nodding.", "The pharmacist was saying: \"Yes, I felt it too.", "The mayor should have closed the school the day before.\"", "Everyone now thought the storm had been predictable.", "And everyone was angry with the mayor.", "The mayor, Monsieur Alix, did not understand.", "He remembered the day before the storm.", "The forecast said strong wind, as it does ten times every winter.", "He asked the fishermen for their opinion.", "They answered: \"Wind, as usual.\"", "Rémi, the baker, even laughed and said: \"Close the school for a bit of wind?", "The children need their lessons.\"", "But now, Rémi did not remember that sentence.", "The young teacher, Claire, listened to everyone for a week.", "Then she had an idea.", "She went to the library and read the village newspaper for the last ten years.", "She counted the strong-wind warnings: sixty-three.", "And she counted the real storms: two.", "She also found the small class diary, written every day by the children.", "The page from the day before said: \"Today it is windy.", "Monsieur Rémi says it is nothing.\"", "On Sunday, Claire spoke on the square.", "She showed the class diary to Rémi.", "Rémi blushed.", "He said quietly: \"I did not remember that.\"", "Claire answered: \"Nobody remembers.", "On the day of the storm, we knew nothing.", "Today, we know the end of the story, so the beginning looks clear.", "But the day before, there were sixty-three possible warnings, and two real storms in ten years.", "The mayor made the same decision as all of us.\"", "An old fisherman, Yvon, nodded.", "He said: \"After the storm, everyone is a prophet.", "It is easy to read the past when you know the ending.\"", "The inhabitants stayed silent.", "The anger went down a little.", "Today, the school has a new, sturdier roof.", "The village also has a new rule.", "When the forecast says very strong wind, the school closes, even if it turns out to be for nothing.", "That is not because the mayor was wrong.", "It is because the village understood one thing.", "You cannot predict the future, but you can prepare the village for the worst.", "And Rémi, when he talks about the storm now, always says: \"Nobody knew.", "Neither did I.\""];
 function fillList(id, rows){
   const dl = document.getElementById(id);
   if (!rows.length) { dl.previousElementSibling.remove(); dl.remove(); return; }
@@ -199,12 +216,48 @@ playB.onclick = () => playing ? pause() : playCur();
 prevB.onclick = () => jump(cur - 1);
 nextB.onclick = () => jump(cur + 1);
 loopB.onclick = () => { loop = !loop; render(); };
-textEl.onclick = e => { const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i); };
+/* long press on a sentence shows its translation; a short tap plays it */
+const veil = document.getElementById('veil');
+const popFr = document.getElementById('popFr'), popEn = document.getElementById('popEn');
+let pressTimer = null, pressX = 0, pressY = 0, suppressClick = false;
+
+function showTranslation(i){
+  popFr.textContent = S[i];
+  popEn.textContent = T[i] || 'No translation for this sentence.';
+  veil.hidden = false;
+}
+function hideTranslation(){ veil.hidden = true; }
+function cancelPress(){ if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
+textEl.addEventListener('pointerdown', e => {
+  const sp = e.target.closest('span'); if (!sp || !veil.hidden) return;
+  pressX = e.clientX; pressY = e.clientY;
+  cancelPress();
+  pressTimer = setTimeout(() => {
+    pressTimer = null; suppressClick = true;
+    showTranslation(+sp.dataset.i);
+  }, 450);
+});
+textEl.addEventListener('pointermove', e => {
+  if (pressTimer && Math.hypot(e.clientX - pressX, e.clientY - pressY) > 10) cancelPress();
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(n => textEl.addEventListener(n, cancelPress));
+document.getElementById('body').addEventListener('scroll', cancelPress, {passive: true});
+textEl.addEventListener('contextmenu', e => e.preventDefault());
+
+textEl.onclick = e => {
+  if (suppressClick) { suppressClick = false; return; }
+  const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i);
+};
+veil.addEventListener('pointerdown', e => { e.preventDefault(); hideTranslation(); });
+veil.addEventListener('click', e => e.preventDefault());
 toggleB.onclick = () => {
   const hidden = textEl.classList.toggle('hidden');
   toggleB.textContent = hidden ? 'Show' : 'Hide';
 };
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') return hideTranslation();
+  if (e.key === 't') return veil.hidden ? showTranslation(cur) : hideTranslation();
   if (e.key === ' ') { e.preventDefault(); playB.onclick(); }
   else if (e.key === 'ArrowLeft') jump(cur - 1);
   else if (e.key === 'ArrowRight') jump(cur + 1);

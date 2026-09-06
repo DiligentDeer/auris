@@ -58,7 +58,15 @@
   .body::-webkit-scrollbar-thumb{background:var(--faint)}
   .body:hover::-webkit-scrollbar-thumb{background:var(--line)}
   .body .sec{margin-top:22px}
-  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s}
+  .text{font-size:18px;line-height:1.65;margin:0;color:var(--dim);cursor:pointer;transition:opacity .15s;
+        -webkit-touch-callout:none}
+  .veil{position:fixed;inset:0;display:flex;align-items:flex-end;justify-content:center;
+        padding:0 14px calc(env(safe-area-inset-bottom) + 76px);background:transparent}
+  .pop{width:100%;max-width:430px;border:1px solid var(--line);background:#fff;padding:18px 18px 16px}
+  .pop .fam{margin-bottom:10px}
+  .pop .fr{font-size:14px;line-height:1.5;color:var(--dim);margin:0 0 10px;padding-bottom:10px;
+           border-bottom:1px solid var(--faint)}
+  .pop .en{font-size:18px;line-height:1.5;margin:0}
   .pair{display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:5px;margin:0}
   .pair dt{font-size:14px;color:var(--dim);white-space:nowrap}
   .pair dd{font-size:14px;margin:0}
@@ -115,7 +123,15 @@
   <button id="next" aria-label="Next sentence"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <button id="loop" aria-label="Repeat sentence" title="Repeat"><svg viewBox="0 0 24 24"><path d="M18.4 8.6A7 7 0 1 0 19 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19 5v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
-<p class="hint">Tap a sentence to play it &middot; the last button repeats the sentence</p>
+<p class="hint">Tap a sentence to play it &middot; hold it for the translation &middot; the last button repeats</p>
+
+<div class="veil" id="veil" hidden>
+  <div class="pop" role="dialog" aria-label="Translation">
+    <p class="fam">Translation</p>
+    <p class="fr" id="popFr"></p>
+    <p class="en" id="popEn"></p>
+  </div>
+</div>
 
 <script>
 const PACES = ["Slow", "Medium", "Normal"];
@@ -125,6 +141,7 @@ const N = S.length;
 const ICON_PLAY  = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M7 5.5h3.5v13H7zM13.5 5.5H17v13h-3.5z" fill="currentColor"/></svg>';
 const VOCAB = [["la roue (s)", "wheel"], ["le bruit (s)", "noise, sound"], ["la poche (s)", "pocket"], ["de suite", "in a row"], ["rare", "rare"], ["l'équilibre (s, m)", "balance"], ["sûr de lui", "sure of himself"], ["les crêpes (p)", "pancakes"], ["la loi (s)", "law"], ["la mémoire (s)", "memory"], ["le tour (s)", "turn, spin"], ["la chance (s)", "luck, chance"], ["moitié moitié", "fifty-fifty"], ["la rareté (s)", "rarity"], ["le passé (s)", "the past"], ["les cartes (p)", "playing cards"], ["la soirée (s)", "evening"]], VERBS = [["avoir (avait)", "to have"], ["payer (payait)", "to pay"], ["tourner (tournait)", "to turn, to spin"], ["s'arrêter (s'arrêtait)", "to stop"], ["gagner (gagnait)", "to win"], ["être (était)", "to be"], ["adorer (adoraient)", "to love"], ["regarder (a regardé)", "to watch"], ["jouer (jouer)", "to play"], ["rire (riaient)", "to laugh"], ["dire (disaient)", "to say"], ["réfléchir (a réfléchi)", "to think it over"], ["penser (pensait)", "to think"], ["devoir (doit)", "to have to, must"], ["arriver (arriver)", "to arrive, to happen"], ["revenir (revenir)", "to come back"], ["mettre (a mis)", "to put"], ["continuer (continue)", "to continue"], ["partir (est parti)", "to leave"], ["tricher (trichait)", "to cheat"], ["vendre (vendait)", "to sell"], ["voir (a vu)", "to see"], ["venir (viens)", "to come"], ["manger (manger)", "to eat"], ["raconter (raconte)", "to tell"], ["expliquer (a expliqué)", "to explain"], ["demander (a demandé)", "to ask"], ["hésiter (a hésité)", "to hesitate"], ["savoir (sait)", "to know"], ["donner (a donné)", "to give"], ["pouvoir (peut)", "to be able to"], ["vouloir (vouloir)", "to want"], ["connaître (connaît)", "to know"], ["commencer (commencer)", "to begin"], ["croire (croyait)", "to believe"], ["perdre (a perdu)", "to lose"], ["se souvenir (se souvenait)", "to remember"], ["ranger (a rangé)", "to put away"], ["sourire (a souri)", "to smile"]];
+const T = ["Every summer, the fair in the village of Montbrun had a big wheel of colours.", "You paid one euro, the wheel spun, and it stopped on red or on black.", "Red won two euros.", "Black won nothing.", "The wheel had as much red as black.", "It was a simple game, and the children loved the sound of the wheel.", "That summer, Théo was fourteen, and he had ten euros in his pocket.", "He watched the wheel for a long while before playing.", "The wheel stopped on black.", "Then on black again.", "Then a third time, then a fourth, then a fifth time on black.", "The people around were laughing and saying: \"The wheel is tired of black!\"", "Théo thought fast.", "He was thinking: \"Five blacks in a row is very rare.", "Now red has to come.", "The wheel has to return to balance.\"", "He was sure of himself.", "He put two euros on red.", "Black.", "He put three euros.", "Black.", "He thought: \"Seven blacks!", "It is impossible for this to continue.\"", "He put down his last five euros.", "Black.", "Théo left with empty pockets, very angry at the wheel.", "He thought the wheel was cheating.", "His grandmother, Odile, was selling pancakes next door.", "She had seen everything.", "She said: \"Come and eat a pancake, and tell me.\"", "Théo explained.", "\"After five blacks, red had to come.", "That is the law.\"", "Odile asked: \"Which law?", "Does the wheel have a memory?\"", "Théo hesitated.", "\"No.\"", "\"Does it know it has given five blacks?\"", "\"No.\"", "\"Then how can it want to return to balance?", "On every spin, the wheel has one chance in two, no more, no less.", "The sixth spin does not know about the first five.\"", "Théo ate his pancake in silence.", "He said: \"But seven blacks in a row is rare.\"", "Odile answered: \"Yes, it is rare before you start.", "But after five blacks, the question is no longer the same.", "The question is: the next spin, red or black?", "And the answer is always fifty-fifty.", "The rarity is in the past, and the past has already happened.", "You paid ten euros for a memory the wheel does not have.\"", "Odile told a story.", "\"Your grandfather thought the same thing with cards.", "After three bad evenings, he would say: luck has to turn.", "And he played more, because he believed the fourth evening owed him something.", "The fourth evening owed him nothing.", "He lost the car.\"", "Théo looked at the wheel from a distance.", "It was still spinning.", "It stopped on red.", "Then on black.", "Then on red.", "It remembered nothing.", "The following year, Théo came back to the fair.", "He played once, for the pleasure of the sound, and he lost.", "Then he put his money away.", "A friend said: \"Play again, you lost, so your luck is coming back.\"", "Théo smiled.", "\"Luck does not come back.", "It does not leave either.", "It does not even know we are here.\""];
 function fillList(id, rows){
   const dl = document.getElementById(id);
   if (!rows.length) { dl.previousElementSibling.remove(); dl.remove(); return; }
@@ -199,12 +216,48 @@ playB.onclick = () => playing ? pause() : playCur();
 prevB.onclick = () => jump(cur - 1);
 nextB.onclick = () => jump(cur + 1);
 loopB.onclick = () => { loop = !loop; render(); };
-textEl.onclick = e => { const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i); };
+/* long press on a sentence shows its translation; a short tap plays it */
+const veil = document.getElementById('veil');
+const popFr = document.getElementById('popFr'), popEn = document.getElementById('popEn');
+let pressTimer = null, pressX = 0, pressY = 0, suppressClick = false;
+
+function showTranslation(i){
+  popFr.textContent = S[i];
+  popEn.textContent = T[i] || 'No translation for this sentence.';
+  veil.hidden = false;
+}
+function hideTranslation(){ veil.hidden = true; }
+function cancelPress(){ if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
+textEl.addEventListener('pointerdown', e => {
+  const sp = e.target.closest('span'); if (!sp || !veil.hidden) return;
+  pressX = e.clientX; pressY = e.clientY;
+  cancelPress();
+  pressTimer = setTimeout(() => {
+    pressTimer = null; suppressClick = true;
+    showTranslation(+sp.dataset.i);
+  }, 450);
+});
+textEl.addEventListener('pointermove', e => {
+  if (pressTimer && Math.hypot(e.clientX - pressX, e.clientY - pressY) > 10) cancelPress();
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(n => textEl.addEventListener(n, cancelPress));
+document.getElementById('body').addEventListener('scroll', cancelPress, {passive: true});
+textEl.addEventListener('contextmenu', e => e.preventDefault());
+
+textEl.onclick = e => {
+  if (suppressClick) { suppressClick = false; return; }
+  const sp = e.target.closest('span'); if (sp) jump(+sp.dataset.i);
+};
+veil.addEventListener('pointerdown', e => { e.preventDefault(); hideTranslation(); });
+veil.addEventListener('click', e => e.preventDefault());
 toggleB.onclick = () => {
   const hidden = textEl.classList.toggle('hidden');
   toggleB.textContent = hidden ? 'Show' : 'Hide';
 };
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') return hideTranslation();
+  if (e.key === 't') return veil.hidden ? showTranslation(cur) : hideTranslation();
   if (e.key === ' ') { e.preventDefault(); playB.onclick(); }
   else if (e.key === 'ArrowLeft') jump(cur - 1);
   else if (e.key === 'ArrowRight') jump(cur + 1);
