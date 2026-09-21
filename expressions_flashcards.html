@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>Expression Flashcards</title>
+<style>
+  :root{
+    --sans:"Helvetica Neue",Arial,"Segoe UI",Roboto,sans-serif;
+    --ink:#000;
+    --line:#8a8a8a;
+    --faint:#d8d8d8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:#fff;color:var(--ink);
+            overscroll-behavior:none;overflow:hidden}
+  body{font-family:var(--sans);
+       display:flex;flex-direction:column;align-items:center;
+       padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 10px);
+       -webkit-user-select:none;user-select:none}
+
+  /* progress */
+  .top{width:100%;max-width:430px;flex:0 0 auto}
+  .count{font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+         display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .count .of{font-weight:400;color:var(--line)}
+  .count .back{color:var(--ink);text-decoration:none;margin-right:14px}
+  .count .back:active{color:var(--line)}
+  .bar{height:1px;background:var(--faint);position:relative}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);
+         transition:width .2s ease-out}
+
+  /* card stage */
+  .stage{flex:1 1 auto;width:100%;max-width:430px;display:flex;align-items:center;
+         justify-content:center;min-height:0;padding:12px 0}
+  .card{width:100%;border:1px solid var(--line);background:#fff;position:relative;
+        padding:18px 46px 16px 18px;touch-action:pan-y;will-change:transform,opacity}
+
+  /* the star that keeps a card, top right, inside the card */
+  .fav{position:absolute;top:0;right:0;width:44px;height:44px;padding:0;margin:0;
+       border:0;background:none;color:var(--ink);cursor:pointer;
+       display:flex;align-items:center;justify-content:center}
+  .fav:active{background:none;color:var(--ink)}
+
+  .fam{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
+       color:var(--line);margin:0 0 8px}
+  .fam::before{content:"\2756";margin-right:7px;font-weight:400}
+  .v{font-size:26px;font-weight:700;line-height:1.1;letter-spacing:-.3px;margin:0}
+  .mn{font-style:italic;font-size:16px;margin:5px 0 0}
+  .note{font-size:13px;line-height:1.45;color:#555;margin:8px 0 0}
+
+  .sec{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
+       margin:16px 0 6px;padding-top:9px;border-top:1px solid var(--faint)}
+
+  .ex{margin:0}
+  .ex .fr{font-size:17px;line-height:1.45;margin:0}
+  .ex .en{font-size:13px;line-height:1.4;font-style:italic;color:#666;margin:2px 0 0}
+  .ex .en + .fr{margin-top:12px}
+
+  @media (min-height:760px){
+    .v{font-size:30px}
+    .ex .fr{font-size:19px}
+    .ex .en{font-size:14px}
+  }
+
+  /* controls */
+  .ctl{flex:0 0 auto;display:flex;align-items:center;gap:14px;width:100%;max-width:430px;
+       justify-content:center}
+  button{font-family:var(--sans);font-size:22px;line-height:1;color:var(--ink);
+         background:#fff;border:1px solid var(--line);
+         width:64px;height:44px;cursor:pointer;padding:0}
+  button:active{background:var(--ink);color:#fff}
+  button:disabled{color:var(--faint);border-color:var(--faint);cursor:default}
+  button:disabled:active{background:#fff;color:var(--faint)}
+  #favonly{display:flex;align-items:center;justify-content:center}
+  #favonly.on,#favonly.on:active{background:var(--ink);color:#fff}
+  .hint{font-size:10.5px;color:var(--line);text-align:center;margin:7px 0 0;
+        flex:0 0 auto;letter-spacing:.3px}
+
+  @media (min-height:760px){
+    .card{padding:24px 50px 20px 22px}
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="count"><span><a class="back" href="index.html">&#8249; Index</a><span id="n">1</span></span><span class="of">of <span id="total"></span> &middot; <span id="mode">shuffled</span></span></div>
+  <div class="bar"><i id="fill"></i></div>
+</div>
+
+<div class="stage"><div class="card" id="card"></div></div>
+
+<div class="ctl">
+  <button id="prev" aria-label="Previous card">&#8249;</button>
+  <button id="next" aria-label="Next card">&#8250;</button>
+  <button id="favonly" aria-label="Show kept cards only" aria-pressed="false"></button>
+</div>
+<p class="hint">Swipe the card, or use the arrow keys &middot; star keeps a card &middot; the last button shows kept cards only</p>
+
+<script>
+const CARDS = [{"k": "avoir besoin de", "f": "Avoir · besoins et sensations", "e": "avoir besoin de", "m": "to need", "n": "avoir + besoin de + noun or infinitive. de becomes d' before a vowel.", "x": [["J'ai besoin d'un manteau chaud pour l'hiver.", "I need a warm coat for the winter."], ["Nous avons besoin de dormir avant le voyage.", "We need to sleep before the trip."]]}, {"k": "avoir envie de", "f": "Avoir · besoins et sensations", "e": "avoir envie de", "m": "to feel like, to want", "n": "+ noun or infinitive. Softer than vouloir.", "x": [["J'ai envie d'un café.", "I feel like a coffee."], ["Tu as envie de sortir ce soir ?", "Do you feel like going out tonight?"]]}, {"k": "avoir peur de", "f": "Avoir · besoins et sensations", "e": "avoir peur de", "m": "to be afraid of", "n": "+ noun or infinitive.", "x": [["Elle a peur des chiens.", "She is afraid of dogs."], ["J'ai peur de parler en public.", "I am afraid of speaking in public."]]}, {"k": "avoir faim / avoir soif", "f": "Avoir · besoins et sensations", "e": "avoir faim / avoir soif", "m": "to be hungry / to be thirsty", "n": "With avoir, not être. Very hungry is très faim, never beaucoup.", "x": [["Les enfants ont faim après l'école.", "The children are hungry after school."], ["J'ai très soif, il fait chaud.", "I am very thirsty, it is hot."]]}, {"k": "avoir chaud / avoir froid", "f": "Avoir · besoins et sensations", "e": "avoir chaud / avoir froid", "m": "to be hot / to be cold", "n": "For a person. For the weather, use il fait chaud.", "x": [["Ouvre la fenêtre, j'ai chaud.", "Open the window, I am hot."], ["Elle a froid, elle met un pull.", "She is cold, she puts on a sweater."]]}, {"k": "avoir sommeil", "f": "Avoir · besoins et sensations", "e": "avoir sommeil", "m": "to be sleepy |", "n": "", "x": [["J'ai sommeil, je me couche.", "I am sleepy, I am going to bed."], ["Le bébé a sommeil après le repas.", "The baby is sleepy after the meal."]]}, {"k": "avoir mal à", "f": "Avoir · besoins et sensations", "e": "avoir mal à", "m": "to have a pain in, to hurt", "n": "à + body part: au, à la, à l', aux.", "x": [["J'ai mal à la tête.", "I have a headache."], ["Il a mal au dos depuis lundi.", "His back has hurt since Monday."]]}, {"k": "avoir du mal à", "f": "Avoir · besoins et sensations", "e": "avoir du mal à", "m": "to have trouble doing", "n": "+ infinitive. Not the same as avoir mal à.", "x": [["J'ai du mal à comprendre cet accent.", "I have trouble understanding this accent."], ["Elle a du mal à se lever le matin.", "She has trouble getting up in the morning."]]}, {"k": "avoir raison / avoir tort", "f": "Avoir · besoins et sensations", "e": "avoir raison / avoir tort", "m": "to be right / to be wrong |", "n": "", "x": [["Tu as raison, c'est trop cher.", "You are right, it is too expensive."], ["J'ai eu tort de partir si tôt.", "I was wrong to leave so early."]]}, {"k": "avoir de la chance", "f": "Avoir · besoins et sensations", "e": "avoir de la chance", "m": "to be lucky |", "n": "", "x": [["Tu as de la chance, il fait beau aujourd'hui.", "You are lucky, the weather is nice today."], ["Nous avons eu de la chance de trouver cet appartement.", "We were lucky to find this apartment."]]}, {"k": "avoir l'air", "f": "Avoir · besoins et sensations", "e": "avoir l'air", "m": "to look, to seem", "n": "+ adjective. The adjective agrees with the subject.", "x": [["Tu as l'air fatigué.", "You look tired."], ["Ce gâteau a l'air délicieux.", "This cake looks delicious."]]}, {"k": "avoir le temps de", "f": "Avoir · besoins et sensations", "e": "avoir le temps de", "m": "to have time to", "n": "+ infinitive.", "x": [["Je n'ai pas le temps de cuisiner ce soir.", "I do not have time to cook tonight."], ["Vous avez le temps de prendre un café ?", "Do you have time for a coffee?"]]}, {"k": "avoir hâte de", "f": "Avoir · besoins et sensations", "e": "avoir hâte de", "m": "to look forward to", "n": "+ infinitive.", "x": [["J'ai hâte de visiter Québec.", "I am looking forward to visiting Quebec City."], ["Les enfants ont hâte de voir la neige.", "The children are looking forward to seeing the snow."]]}, {"k": "avoir ... ans", "f": "Avoir · besoins et sensations", "e": "avoir ... ans", "m": "to be ... years old", "n": "With avoir, not être.", "x": [["Ma fille a sept ans.", "My daughter is seven years old."], ["Quel âge avez-vous ? J'ai trente ans.", "How old are you? I am thirty."]]}, {"k": "avoir l'habitude de", "f": "Avoir · besoins et sensations", "e": "avoir l'habitude de", "m": "to be used to", "n": "+ infinitive or noun.", "x": [["J'ai l'habitude de me lever tôt.", "I am used to getting up early."], ["Il n'a pas l'habitude du froid.", "He is not used to the cold."]]}, {"k": "avoir rendez-vous", "f": "Avoir · besoins et sensations", "e": "avoir rendez-vous", "m": "to have an appointment", "n": "No article after avoir.", "x": [["J'ai rendez-vous chez le médecin à dix heures.", "I have an appointment at the doctor's at ten."], ["Nous avons rendez-vous avec l'agent immobilier demain.", "We have an appointment with the real estate agent tomorrow."]]}, {"k": "être en train de", "f": "Être", "e": "être en train de", "m": "to be in the middle of doing", "n": "+ infinitive. The action is happening right now.", "x": [["Je suis en train de manger, je te rappelle.", "I am in the middle of eating, I will call you back."], ["Les enfants sont en train de faire leurs devoirs.", "The children are doing their homework right now."]]}, {"k": "être d'accord", "f": "Être", "e": "être d'accord", "m": "to agree", "n": "d'accord on its own means OK.", "x": [["Je suis d'accord avec toi.", "I agree with you."], ["Vous êtes d'accord pour partir à huit heures ?", "Do you agree to leave at eight?"]]}, {"k": "être en retard / être à l'heure", "f": "Être", "e": "être en retard / être à l'heure", "m": "to be late / to be on time", "n": "Also être en avance, to be early.", "x": [["Désolé, je suis en retard.", "Sorry, I am late."], ["Le train est à l'heure ce matin.", "The train is on time this morning."]]}, {"k": "être en forme", "f": "Être", "e": "être en forme", "m": "to feel well, to be in good shape |", "n": "", "x": [["Je suis en forme ce matin.", "I feel great this morning."], ["Il n'est pas en forme, il reste au lit.", "He is not feeling well, he is staying in bed."]]}, {"k": "être en vacances / être en congé", "f": "Être", "e": "être en vacances / être en congé", "m": "to be on vacation / to be on leave |", "n": "", "x": [["Nous sommes en vacances la semaine prochaine.", "We are on vacation next week."], ["Ma collègue est en congé maladie.", "My colleague is on sick leave."]]}, {"k": "être content de", "f": "Être", "e": "être content de", "m": "to be happy about, to be glad to", "n": "+ noun or infinitive. Agrees with the subject.", "x": [["Je suis contente de te voir.", "I am glad to see you."], ["Ils sont contents de leur nouvel appartement.", "They are happy with their new apartment."]]}, {"k": "c'est / ce n'est pas", "f": "Être", "e": "c'est / ce n'est pas", "m": "it is, this is / it is not", "n": "Identifies or describes. Followed by a noun with its article, or an adjective.", "x": [["C'est mon frère.", "This is my brother."], ["Ce n'est pas facile d'apprendre une langue.", "It is not easy to learn a language."]]}, {"k": "faire attention à", "f": "Faire", "e": "faire attention à", "m": "to be careful of, to pay attention to |", "n": "", "x": [["Fais attention à la voiture !", "Watch out for the car!"], ["Il faut faire attention aux prix.", "You have to pay attention to the prices."]]}, {"k": "faire les courses", "f": "Faire", "e": "faire les courses", "m": "to do the shopping", "n": "Everyday food shopping.", "x": [["Je fais les courses le samedi matin.", "I do the shopping on Saturday mornings."], ["On a fait les courses au marché.", "We did the shopping at the market."]]}, {"k": "faire la cuisine / faire le ménage", "f": "Faire", "e": "faire la cuisine / faire le ménage", "m": "to cook / to do the housework |", "n": "", "x": [["Mon mari fait la cuisine le soir.", "My husband cooks in the evening."], ["Nous faisons le ménage ensemble le dimanche.", "We do the housework together on Sundays."]]}, {"k": "faire du / de la / des", "f": "Faire", "e": "faire du / de la / des", "m": "to do, to play (a sport or activity)", "n": "faire + de + article + activity.", "x": [["Je fais du vélo tous les jours.", "I cycle every day."], ["Elle fait de la natation le mardi.", "She goes swimming on Tuesdays."]]}, {"k": "il fait + météo", "f": "Faire", "e": "il fait + météo", "m": "the weather is", "n": "il fait beau, chaud, froid, mauvais.", "x": [["Il fait froid à Montréal en janvier.", "It is cold in Montreal in January."], ["Hier, il faisait beau.", "Yesterday, the weather was nice."]]}, {"k": "ça fait combien ?", "f": "Faire", "e": "ça fait combien ?", "m": "how much is it?", "n": "For a total price. The answer is ça fait + amount.", "x": [["Ça fait combien ? Ça fait douze dollars.", "How much is it? That comes to twelve dollars."], ["Ça fait vingt dollars en tout.", "That comes to twenty dollars in total."]]}, {"k": "ça fait ... que", "f": "Faire", "e": "ça fait ... que", "m": "it has been ... since", "n": "+ duration + que. Same idea as depuis.", "x": [["Ça fait deux ans que j'habite ici.", "I have lived here for two years."], ["Ça fait une heure que j'attends.", "I have been waiting for an hour."]]}, {"k": "faire la queue", "f": "Faire", "e": "faire la queue", "m": "to stand in line |", "n": "", "x": [["On fait la queue devant le cinéma.", "We are standing in line in front of the cinema."], ["J'ai fait la queue pendant trente minutes à la banque.", "I stood in line for thirty minutes at the bank."]]}, {"k": "faire plaisir à", "f": "Faire", "e": "faire plaisir à", "m": "to make someone happy |", "n": "", "x": [["Ce cadeau fait plaisir à ma mère.", "This gift makes my mother happy."], ["Ça me fait plaisir de vous aider.", "It makes me happy to help you."]]}, {"k": "faire la connaissance de", "f": "Faire", "e": "faire la connaissance de", "m": "to meet for the first time |", "n": "", "x": [["J'ai fait la connaissance de mes voisins hier.", "I met my neighbors yesterday."], ["Ravi de faire votre connaissance.", "Pleased to meet you."]]}, {"k": "ça fait mal", "f": "Faire", "e": "ça fait mal", "m": "it hurts", "n": "The thing that hurts is the subject.", "x": [["Aïe, ça fait mal !", "Ouch, that hurts!"], ["Ma dent me fait mal depuis hier.", "My tooth has been hurting since yesterday."]]}, {"k": "il y a", "f": "Il y a · il faut", "e": "il y a", "m": "there is, there are", "n": "Never changes for the plural. Past: il y avait.", "x": [["Il y a un marché près de chez moi.", "There is a market near my home."], ["Il y avait beaucoup de monde à la fête.", "There were a lot of people at the party."]]}, {"k": "il y a + durée", "f": "Il y a · il faut", "e": "il y a + durée", "m": "... ago", "n": "+ duration. A finished moment in the past.", "x": [["J'ai déménagé il y a trois mois.", "I moved three months ago."], ["Il y a deux ans, nous habitions à Lyon.", "Two years ago, we lived in Lyon."]]}, {"k": "il faut", "f": "Il y a · il faut", "e": "il faut", "m": "you have to, it is necessary", "n": "+ infinitive or noun. A general rule, not aimed at one person.", "x": [["Il faut réserver à l'avance.", "You have to book in advance."], ["Il faut du temps pour apprendre le français.", "It takes time to learn French."]]}, {"k": "il me faut", "f": "Il y a · il faut", "e": "il me faut", "m": "I need", "n": "il + me, te, lui, nous, vous, leur + faut + noun.", "x": [["Il me faut un visa pour le Canada.", "I need a visa for Canada."], ["Il nous faut deux billets pour ce soir.", "We need two tickets for tonight."]]}, {"k": "il vaut mieux", "f": "Il y a · il faut", "e": "il vaut mieux", "m": "it is better to", "n": "+ infinitive. Advice.", "x": [["Il vaut mieux partir tôt.", "It is better to leave early."], ["Il vaut mieux prendre le métro que la voiture.", "It is better to take the metro than the car."]]}, {"k": "il est interdit de / il est possible de", "f": "Il y a · il faut", "e": "il est interdit de / il est possible de", "m": "it is forbidden to / it is possible to", "n": "il est + adjective + de + infinitive.", "x": [["Il est interdit de fumer ici.", "It is forbidden to smoke here."], ["Il est possible de payer par carte.", "It is possible to pay by card."]]}, {"k": "Qu'est-ce que tu / vous... ?", "f": "Questions", "e": "Qu'est-ce que tu / vous... ?", "m": "What do you... ?", "n": "+ subject + verb. Asks about the thing, never about a person.", "x": [["Qu'est-ce que tu fais ce week-end ?", "What are you doing this weekend?"], ["Qu'est-ce que vous prenez ?", "What are you having?"]]}, {"k": "Qu'est-ce que c'est ?", "f": "Questions", "e": "Qu'est-ce que c'est ?", "m": "What is it? |", "n": "", "x": [["Qu'est-ce que c'est ? C'est une poutine.", "What is it? It is a poutine."], ["Qu'est-ce que c'est, ce bruit ?", "What is that noise?"]]}, {"k": "Qu'est-ce qui se passe ?", "f": "Questions", "e": "Qu'est-ce qui se passe ?", "m": "What is happening? |", "n": "", "x": [["Qu'est-ce qui se passe ici ?", "What is happening here?"], ["Tu pleures, qu'est-ce qui se passe ?", "You are crying, what is happening?"]]}, {"k": "Est-ce que... ?", "f": "Questions", "e": "Est-ce que... ?", "m": "Do, does, is, are... ?", "n": "Turns a statement into a yes or no question. No meaning of its own.", "x": [["Est-ce que vous parlez anglais ?", "Do you speak English?"], ["Est-ce qu'il y a une pharmacie près d'ici ?", "Is there a pharmacy near here?"]]}, {"k": "Est-ce que je peux... ?", "f": "Questions", "e": "Est-ce que je peux... ?", "m": "Can I... ?", "n": "+ infinitive. A polite request.", "x": [["Est-ce que je peux avoir l'addition ?", "Can I have the bill?"], ["Est-ce que je peux ouvrir la fenêtre ?", "Can I open the window?"]]}, {"k": "Pouvez-vous / Pourriez-vous... ?", "f": "Questions", "e": "Pouvez-vous / Pourriez-vous... ?", "m": "Can you / Could you... ?", "n": "+ infinitive. Pourriez-vous is more polite.", "x": [["Pouvez-vous répéter, s'il vous plaît ?", "Can you repeat, please?"], ["Pourriez-vous m'aider ?", "Could you help me?"]]}, {"k": "Qu'est-ce que ça veut dire ?", "f": "Questions", "e": "Qu'est-ce que ça veut dire ?", "m": "What does that mean? |", "n": "", "x": [["Qu'est-ce que ça veut dire, « dépanneur » ?", "What does \"dépanneur\" mean?"], ["Ce mot, ça veut dire quoi ?", "This word, what does it mean?"]]}, {"k": "Comment dit-on... en français ?", "f": "Questions", "e": "Comment dit-on... en français ?", "m": "How do you say... in French? |", "n": "", "x": [["Comment dit-on « appointment » en français ?", "How do you say \"appointment\" in French?"], ["Comment ça s'écrit ?", "How is that spelled?"]]}, {"k": "Combien ça coûte ? / C'est combien ?", "f": "Questions", "e": "Combien ça coûte ? / C'est combien ?", "m": "How much does it cost? |", "n": "", "x": [["Combien coûte ce manteau ?", "How much does this coat cost?"], ["C'est combien, le kilo de pommes ?", "How much is a kilo of apples?"]]}, {"k": "Où se trouve... ? / Où est... ?", "f": "Questions", "e": "Où se trouve... ? / Où est... ?", "m": "Where is... ? |", "n": "", "x": [["Où se trouve la gare, s'il vous plaît ?", "Where is the station, please?"], ["Où sont les toilettes ?", "Where are the restrooms?"]]}, {"k": "Quelle heure est-il ? / À quelle heure... ?", "f": "Questions", "e": "Quelle heure est-il ? / À quelle heure... ?", "m": "What time is it? / At what time... ? |", "n": "", "x": [["Quelle heure est-il ? Il est neuf heures et demie.", "What time is it? It is half past nine."], ["À quelle heure ouvre le magasin ?", "At what time does the shop open?"]]}, {"k": "Quel âge as-tu ? / Quel âge avez-vous ?", "f": "Questions", "e": "Quel âge as-tu ? / Quel âge avez-vous ?", "m": "How old are you?", "n": "The answer uses avoir.", "x": [["Quel âge as-tu ? J'ai vingt-cinq ans.", "How old are you? I am twenty-five."], ["Quel âge a votre fils ?", "How old is your son?"]]}, {"k": "Ça va ?", "f": "Questions", "e": "Ça va ?", "m": "How are you?", "n": "Also the answer: ça va, ça va bien.", "x": [["Salut Marie, ça va ? Oui, ça va bien, merci.", "Hi Marie, how are you? Yes, I am fine, thanks."], ["Ça va, le travail ?", "How is work going?"]]}, {"k": "Pourquoi... ? Parce que...", "f": "Questions", "e": "Pourquoi... ? Parce que...", "m": "Why... ? Because... |", "n": "", "x": [["Pourquoi tu apprends le français ? Parce que je veux vivre au Canada.", "Why are you learning French? Because I want to live in Canada."], ["Pourquoi pas ?", "Why not?"]]}, {"k": "je voudrais", "f": "Demander poliment", "e": "je voudrais", "m": "I would like", "n": "+ noun or infinitive. A fixed polite form.", "x": [["Je voudrais un café, s'il vous plaît.", "I would like a coffee, please."], ["Je voudrais réserver une table pour deux.", "I would like to book a table for two."]]}, {"k": "j'aimerais", "f": "Demander poliment", "e": "j'aimerais", "m": "I would like", "n": "+ infinitive. A wish, a little softer than je voudrais.", "x": [["J'aimerais visiter Vancouver un jour.", "I would like to visit Vancouver one day."], ["J'aimerais parler au directeur.", "I would like to speak to the manager."]]}, {"k": "s'il vous plaît / s'il te plaît", "f": "Demander poliment", "e": "s'il vous plaît / s'il te plaît", "m": "please", "n": "vous with a stranger, te with a friend.", "x": [["Un billet pour Ottawa, s'il vous plaît.", "One ticket to Ottawa, please."], ["Passe-moi le sel, s'il te plaît.", "Pass me the salt, please."]]}, {"k": "excusez-moi / pardon", "f": "Demander poliment", "e": "excusez-moi / pardon", "m": "excuse me / sorry", "n": "To get attention or to say sorry.", "x": [["Excusez-moi, où est la sortie ?", "Excuse me, where is the exit?"], ["Pardon, je ne vous ai pas vu.", "Sorry, I did not see you."]]}, {"k": "je suis désolé / désolée", "f": "Demander poliment", "e": "je suis désolé / désolée", "m": "I am sorry", "n": "Agrees with the speaker.", "x": [["Je suis désolée, je suis en retard.", "I am sorry, I am late."], ["Nous sommes désolés pour le bruit.", "We are sorry about the noise."]]}, {"k": "ce n'est pas grave / ça ne fait rien", "f": "Demander poliment", "e": "ce n'est pas grave / ça ne fait rien", "m": "it does not matter", "n": "The reply to an apology.", "x": [["Tu as oublié ? Ce n'est pas grave.", "You forgot? It does not matter."], ["Ça ne fait rien, on peut y aller demain.", "It does not matter, we can go tomorrow."]]}, {"k": "merci beaucoup / de rien", "f": "Demander poliment", "e": "merci beaucoup / de rien", "m": "thank you very much / you are welcome", "n": "Also je vous en prie, more formal.", "x": [["Merci beaucoup pour votre aide.", "Thank you very much for your help."], ["De rien, bonne journée !", "You are welcome, have a nice day!"]]}, {"k": "je ne comprends pas", "f": "Demander poliment", "e": "je ne comprends pas", "m": "I do not understand", "n": "Past: je n'ai pas compris.", "x": [["Je ne comprends pas, vous pouvez parler moins vite ?", "I do not understand, can you speak more slowly?"], ["Pardon, je n'ai pas compris le dernier mot.", "Sorry, I did not understand the last word."]]}, {"k": "bien sûr / d'accord / pas de problème", "f": "Demander poliment", "e": "bien sûr / d'accord / pas de problème", "m": "of course / OK / no problem |", "n": "", "x": [["Tu viens demain ? Bien sûr !", "Are you coming tomorrow? Of course!"], ["D'accord, pas de problème, à dix heures.", "OK, no problem, at ten."]]}, {"k": "ça marche / ça ne marche pas", "f": "Réagir", "e": "ça marche / ça ne marche pas", "m": "that works / it does not work", "n": "For a plan and for a machine.", "x": [["On se voit à midi ? Ça marche !", "See you at noon? That works!"], ["L'ascenseur ne marche pas.", "The elevator does not work."]]}, {"k": "ça dépend", "f": "Réagir", "e": "ça dépend", "m": "it depends", "n": "+ de + noun.", "x": [["Tu sors ce soir ? Ça dépend de la météo.", "Are you going out tonight? It depends on the weather."], ["Ça dépend du prix.", "It depends on the price."]]}, {"k": "ça me plaît / ça m'intéresse", "f": "Réagir", "e": "ça me plaît / ça m'intéresse", "m": "I like it / it interests me", "n": "The thing is the subject, the person is me, te, lui.", "x": [["Cet appartement me plaît beaucoup.", "I like this apartment a lot."], ["Le cours de cuisine, ça m'intéresse.", "The cooking class interests me."]]}, {"k": "c'est dommage", "f": "Réagir", "e": "c'est dommage", "m": "that is a pity |", "n": "", "x": [["Tu ne viens pas ? C'est dommage.", "You are not coming? That is a pity."], ["C'est dommage, le musée est fermé le lundi.", "That is a pity, the museum is closed on Mondays."]]}, {"k": "tant mieux / tant pis", "f": "Réagir", "e": "tant mieux / tant pis", "m": "so much the better / never mind", "n": "Good news / bad news that you accept.", "x": [["Tu as trouvé un travail ? Tant mieux !", "You found a job? So much the better!"], ["Il n'y a plus de places ? Tant pis, on rentre.", "No seats left? Never mind, we go home."]]}, {"k": "bon courage / bonne chance", "f": "Réagir", "e": "bon courage / bonne chance", "m": "good luck with the effort / good luck", "n": "bon courage for hard work, bonne chance for chance.", "x": [["Tu commences demain ? Bon courage !", "You start tomorrow? Good luck with it!"], ["Bonne chance pour ton examen.", "Good luck with your exam."]]}, {"k": "à mon avis / je trouve que", "f": "Réagir", "e": "à mon avis / je trouve que", "m": "in my opinion / I find that |", "n": "", "x": [["À mon avis, le marché est moins cher.", "In my opinion, the market is cheaper."], ["Je trouve que ce quartier est très calme.", "I find that this neighborhood is very quiet."]]}, {"k": "ça y est", "f": "Réagir", "e": "ça y est", "m": "that is it, done", "n": "Something is finished or ready.", "x": [["Ça y est, j'ai fini mes devoirs.", "That is it, I have finished my homework."], ["Ça y est, le bus arrive.", "That is it, the bus is coming."]]}, {"k": "en fait", "f": "Réagir", "e": "en fait", "m": "actually |", "n": "", "x": [["En fait, je ne suis pas français, je suis belge.", "Actually, I am not French, I am Belgian."], ["Je pensais que c'était loin, en fait c'est à côté.", "I thought it was far, actually it is next door."]]}, {"k": "quand même", "f": "Réagir", "e": "quand même", "m": "anyway, all the same |", "n": "", "x": [["Il pleut, mais on sort quand même.", "It is raining, but we are going out anyway."], ["C'est cher, mais c'est quand même bon.", "It is expensive, but it is good all the same."]]}, {"k": "depuis", "f": "Le temps", "e": "depuis", "m": "since, for", "n": "+ date or duration. Still true now, so the verb is in the present.", "x": [["J'habite à Toronto depuis deux ans.", "I have lived in Toronto for two years."], ["Elle travaille ici depuis janvier.", "She has worked here since January."]]}, {"k": "pendant", "f": "Le temps", "e": "pendant", "m": "during, for", "n": "A finished period.", "x": [["J'ai étudié pendant trois heures.", "I studied for three hours."], ["Pendant les vacances, on a visité Québec.", "During the vacation, we visited Quebec City."]]}, {"k": "tout de suite / tout à l'heure", "f": "Le temps", "e": "tout de suite / tout à l'heure", "m": "right away / in a little while |", "n": "", "x": [["J'arrive tout de suite.", "I am coming right away."], ["À tout à l'heure !", "See you in a little while!"]]}, {"k": "en ce moment / d'habitude", "f": "Le temps", "e": "en ce moment / d'habitude", "m": "at the moment / usually |", "n": "", "x": [["En ce moment, j'ai beaucoup de travail.", "At the moment, I have a lot of work."], ["D'habitude, je prends le bus.", "Usually, I take the bus."]]}, {"k": "de temps en temps / tous les jours", "f": "Le temps", "e": "de temps en temps / tous les jours", "m": "from time to time / every day |", "n": "", "x": [["De temps en temps, on va au restaurant.", "From time to time, we go to a restaurant."], ["Je fais du sport tous les jours.", "I do sport every day."]]}, {"k": "la semaine dernière / la semaine prochaine", "f": "Le temps", "e": "la semaine dernière / la semaine prochaine", "m": "last week / next week", "n": "Also le mois dernier, l'année prochaine.", "x": [["La semaine dernière, j'ai visité un appartement.", "Last week, I visited an apartment."], ["La semaine prochaine, je commence mon nouveau travail.", "Next week, I start my new job."]]}, {"k": "beaucoup de / un peu de", "f": "La quantité et la négation", "e": "beaucoup de / un peu de", "m": "a lot of / a little", "n": "+ noun without an article.", "x": [["Il y a beaucoup de monde au marché.", "There are a lot of people at the market."], ["Je parle un peu de français.", "I speak a little French."]]}, {"k": "trop de / assez de", "f": "La quantité et la négation", "e": "trop de / assez de", "m": "too much, too many / enough", "n": "+ noun without an article.", "x": [["Il y a trop de bruit dans la rue.", "There is too much noise in the street."], ["Nous n'avons pas assez de temps.", "We do not have enough time."]]}, {"k": "plus de / moins de", "f": "La quantité et la négation", "e": "plus de / moins de", "m": "more / less, fewer", "n": "+ noun. Compares quantities.", "x": [["J'ai plus de temps le week-end.", "I have more time at the weekend."], ["Il y a moins de voitures le dimanche.", "There are fewer cars on Sundays."]]}, {"k": "ne ... plus / ne ... jamais", "f": "La quantité et la négation", "e": "ne ... plus / ne ... jamais", "m": "not anymore / never |", "n": "", "x": [["Je ne fume plus.", "I do not smoke anymore."], ["Il ne prend jamais le métro.", "He never takes the metro."]]}, {"k": "ne ... rien / ne ... personne", "f": "La quantité et la négation", "e": "ne ... rien / ne ... personne", "m": "nothing / nobody |", "n": "", "x": [["Je ne comprends rien.", "I understand nothing."], ["Il n'y a personne au bureau.", "There is nobody in the office."]]}, {"k": "commencer à / finir de", "f": "Verbe + préposition", "e": "commencer à / finir de", "m": "to start doing / to finish doing", "n": "+ infinitive.", "x": [["Je commence à comprendre l'accent québécois.", "I am starting to understand the Quebec accent."], ["Elle finit de travailler à cinq heures.", "She finishes working at five."]]}, {"k": "arrêter de", "f": "Verbe + préposition", "e": "arrêter de", "m": "to stop doing", "n": "+ infinitive.", "x": [["Il a arrêté de fumer l'année dernière.", "He stopped smoking last year."], ["Arrête de crier, s'il te plaît.", "Stop shouting, please."]]}, {"k": "essayer de", "f": "Verbe + préposition", "e": "essayer de", "m": "to try to", "n": "+ infinitive.", "x": [["J'essaie de parler français tous les jours.", "I try to speak French every day."], ["On a essayé d'appeler, mais personne n'a répondu.", "We tried to call, but nobody answered."]]}, {"k": "décider de / oublier de", "f": "Verbe + préposition", "e": "décider de / oublier de", "m": "to decide to / to forget to", "n": "+ infinitive.", "x": [["Nous avons décidé de déménager à Ottawa.", "We decided to move to Ottawa."], ["J'ai oublié de fermer la porte.", "I forgot to close the door."]]}, {"k": "apprendre à / réussir à", "f": "Verbe + préposition", "e": "apprendre à / réussir à", "m": "to learn to / to manage to", "n": "+ infinitive.", "x": [["J'apprends à conduire.", "I am learning to drive."], ["Elle a réussi à trouver un travail en un mois.", "She managed to find a job in one month."]]}, {"k": "penser à / penser de", "f": "Verbe + préposition", "e": "penser à / penser de", "m": "to think about / to think of", "n": "penser à is to have in mind, penser de asks for an opinion.", "x": [["Je pense souvent à ma famille.", "I often think about my family."], ["Qu'est-ce que tu penses de ce film ?", "What do you think of this film?"]]}, {"k": "s'occuper de", "f": "Verbe + préposition", "e": "s'occuper de", "m": "to take care of", "n": "+ noun or infinitive.", "x": [["Je m'occupe des enfants ce soir.", "I am taking care of the children tonight."], ["Qui s'occupe de la réservation ?", "Who is taking care of the booking?"]]}, {"k": "s'intéresser à", "f": "Verbe + préposition", "e": "s'intéresser à", "m": "to be interested in |", "n": "", "x": [["Je m'intéresse à la cuisine québécoise.", "I am interested in Quebec cooking."], ["Il ne s'intéresse pas au sport.", "He is not interested in sport."]]}, {"k": "jouer à / jouer de", "f": "Verbe + préposition", "e": "jouer à / jouer de", "m": "to play a sport or game / to play an instrument |", "n": "", "x": [["Les enfants jouent au football dans le parc.", "The children are playing soccer in the park."], ["Elle joue du piano depuis cinq ans.", "She has played the piano for five years."]]}, {"k": "aller à / aller chez", "f": "Verbe + préposition", "e": "aller à / aller chez", "m": "to go to a place / to go to someone's", "n": "chez + person or profession.", "x": [["Je vais à la banque.", "I am going to the bank."], ["Il va chez le médecin cet après-midi.", "He is going to the doctor's this afternoon."]]}, {"k": "venir de", "f": "Verbe + préposition", "e": "venir de", "m": "to come from", "n": "+ city or country: de, du, des. Origin.", "x": [["Je viens de Belgique.", "I come from Belgium."], ["D'où venez-vous ?", "Where do you come from?"]]}, {"k": "demander à ... de", "f": "Verbe + préposition", "e": "demander à ... de", "m": "to ask someone to do", "n": "demander à + person + de + infinitive.", "x": [["J'ai demandé à mon voisin de garder mon chat.", "I asked my neighbor to look after my cat."], ["Elle me demande de venir plus tôt.", "She is asking me to come earlier."]]}, {"k": "parce que / c'est pourquoi", "f": "Cause et lien", "e": "parce que / c'est pourquoi", "m": "because / that is why |", "n": "", "x": [["Je reste à la maison parce que je suis malade.", "I am staying at home because I am sick."], ["Il pleut, c'est pourquoi je prends le bus.", "It is raining, that is why I am taking the bus."]]}, {"k": "à cause de / grâce à", "f": "Cause et lien", "e": "à cause de / grâce à", "m": "because of / thanks to", "n": "+ noun. à cause de for a bad cause, grâce à for a good one.", "x": [["Je suis en retard à cause de la neige.", "I am late because of the snow."], ["Grâce à mes cours, je comprends mieux.", "Thanks to my classes, I understand better."]]}, {"k": "d'abord / ensuite / enfin", "f": "Cause et lien", "e": "d'abord / ensuite / enfin", "m": "first / then / finally |", "n": "", "x": [["D'abord, on visite le musée, ensuite on déjeune.", "First, we visit the museum, then we have lunch."], ["Enfin, on rentre à la maison.", "Finally, we go home."]]}, {"k": "par contre / mais", "f": "Cause et lien", "e": "par contre / mais", "m": "on the other hand / but |", "n": "", "x": [["Le quartier est calme, par contre c'est loin du métro.", "The neighborhood is quiet, on the other hand it is far from the metro."], ["J'aime la ville, mais je préfère la campagne.", "I like the city, but I prefer the countryside."]]}, {"k": "par exemple / surtout", "f": "Cause et lien", "e": "par exemple / surtout", "m": "for example / especially |", "n": "", "x": [["J'aime les fruits, par exemple les pommes.", "I like fruit, for example apples."], ["J'aime surtout l'hiver au Canada.", "I especially like winter in Canada."]]}, {"k": "en général / en tout", "f": "Cause et lien", "e": "en général / en tout", "m": "in general / in total |", "n": "", "x": [["En général, je dîne à sept heures.", "In general, I have dinner at seven."], ["Ça fait trente dollars en tout.", "That comes to thirty dollars in total."]]}];
+const ALL   = CARDS.length;
+
+const card     = document.getElementById('card');
+const nEl      = document.getElementById('n');
+const totalEl  = document.getElementById('total');
+const modeEl   = document.getElementById('mode');
+const fill     = document.getElementById('fill');
+const prevB    = document.getElementById('prev');
+const favOnlyB = document.getElementById('favonly');
+
+/* ---- the star, one path, drawn in currentColor ---- */
+const STAR_D = 'M12 2.7l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5-4.7-4.6 6.5-.9z';
+function starSVG(on){
+  return '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+         '<path d="' + STAR_D + '" ' +
+         (on ? 'fill="currentColor"'
+             : 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"') +
+         '/></svg>';
+}
+
+/* ---- kept cards ---- */
+const FAV_KEY = 'fav:expressions';
+let favs = new Set();
+try {
+  const raw = localStorage.getItem(FAV_KEY);
+  if (raw){
+    const a = JSON.parse(raw);
+    if (Array.isArray(a)) favs = new Set(a);
+  }
+} catch (err) { /* storage unavailable: the session still works */ }
+
+function saveFavs(){
+  try { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); }
+  catch (err) { /* storage unavailable: the session still works */ }
+}
+
+const favBtn = document.createElement('button');
+favBtn.className = 'fav';
+favBtn.type = 'button';
+favBtn.setAttribute('aria-label', 'Keep this card');
+favBtn.innerHTML = starSVG(false);
+
+/* ---- shuffled bag: every card appears once before any repeats ---- */
+let favOnly = false;
+let pool = [], poolN = 0;
+let bag = [], stream = [], pos = 0, busy = false;
+
+function setPool(){
+  pool = [];
+  for (let i = 0; i < ALL; i++){
+    if (!favOnly || favs.has(CARDS[i].k)) pool.push(i);
+  }
+  poolN = pool.length;
+  totalEl.textContent = poolN;
+  modeEl.textContent = favOnly ? 'favourites' : 'shuffled';
+}
+
+function refill(avoid){
+  const b = pool.slice();
+  for (let i = b.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  // never repeat a card back-to-back across a bag boundary
+  if (avoid !== undefined && b.length > 1 && b[0] === avoid) [b[0], b[b.length-1]] = [b[b.length-1], b[0]];
+  bag = b;
+}
+
+function draw(){
+  if (!bag.length) refill(stream.length ? stream[stream.length-1].i : undefined);
+  const i = bag.shift();
+  return { i, n: poolN - bag.length };
+}
+
+function advance(dir){
+  if (dir > 0){
+    pos++;
+    if (pos === stream.length) stream.push(draw());
+  } else if (pos > 0){
+    pos--;
+  }
+}
+
+/* ---- render ---- */
+function paintStar(){
+  const on = favs.has(CARDS[stream[pos].i].k);
+  favBtn.innerHTML = starSVG(on);
+  favBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+function render(){
+  const e = stream[pos], c = CARDS[e.i];
+  card.innerHTML =
+    `<p class="fam">${c.f}</p>` +
+    `<p class="v">${c.e}</p>` +
+    `<p class="mn">${c.m}</p>` +
+    (c.n ? `<p class="note">${c.n}</p>` : '') +
+    `<p class="sec">Exemples</p>` +
+    `<div class="ex">` +
+      c.x.map(([fr, en]) => `<p class="fr">${fr}</p><p class="en">${en}</p>`).join('') +
+    `</div>`;
+  card.appendChild(favBtn);
+  paintStar();
+
+  nEl.textContent = e.n;
+  fill.style.width = (e.n / Math.max(1, poolN) * 100).toFixed(1) + '%';
+  prevB.disabled = pos === 0;
+}
+
+/* ---- keeping and showing kept cards ---- */
+function syncFavOnlyB(){
+  favOnlyB.disabled = favs.size === 0;
+}
+
+function setFavOnly(on){
+  favOnly = on;
+  favOnlyB.classList.toggle('on', on);
+  favOnlyB.setAttribute('aria-pressed', on ? 'true' : 'false');
+  setPool();
+  bag = []; stream = []; pos = 0;
+  refill();
+  stream.push(draw());
+  render();
+}
+
+function toggleFav(){
+  if (busy || !stream.length) return;
+  const k = CARDS[stream[pos].i].k;
+  if (favs.has(k)) favs.delete(k); else favs.add(k);
+  saveFavs();
+  paintStar();
+  syncFavOnlyB();
+  if (favOnly){
+    if (!favs.size){
+      favOnly = false;
+      favOnlyB.classList.remove('on');
+      favOnlyB.setAttribute('aria-pressed', 'false');
+    }
+    // the card on screen stays; the next draw comes from the new pool
+    setPool();
+    refill(stream[pos].i);
+  }
+}
+
+favBtn.addEventListener('touchstart', e => { e.stopPropagation(); }, {passive:true});
+favBtn.addEventListener('click', e => { e.stopPropagation(); toggleFav(); });
+
+/* ---- transitions ---- */
+function go(dir){
+  if (busy) return;
+  if (dir < 0 && pos === 0) return;
+  busy = true;
+  const W = window.innerWidth;
+  card.style.transition = 'transform .17s ease-in, opacity .17s ease-in';
+  card.style.transform  = `translateX(${-dir * W}px) rotate(${-dir * 4}deg)`;
+  card.style.opacity    = '0';
+  setTimeout(() => {
+    advance(dir);
+    render();
+    card.style.transition = 'none';
+    card.style.transform  = `translateX(${dir * W * 0.3}px)`;
+    card.style.opacity    = '0';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      card.style.transition = 'transform .19s ease-out, opacity .19s ease-out';
+      card.style.transform  = 'none';
+      card.style.opacity    = '1';
+      setTimeout(() => { busy = false; }, 190);
+    }));
+  }, 170);
+}
+
+function settle(){
+  card.style.transition = 'transform .18s ease-out, opacity .18s ease-out';
+  card.style.transform  = 'none';
+  card.style.opacity    = '1';
+}
+
+/* ---- swipe ---- */
+let x0 = 0, y0 = 0, dx = 0, axis = null, down = false;
+const THRESH = 55;
+
+card.addEventListener('touchstart', e => {
+  if (busy || e.touches.length !== 1) return;
+  down = true; axis = null; dx = 0;
+  x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  card.style.transition = 'none';
+}, {passive:true});
+
+card.addEventListener('touchmove', e => {
+  if (!down) return;
+  const ax = e.touches[0].clientX - x0;
+  const ay = e.touches[0].clientY - y0;
+  if (axis === null){
+    if (Math.abs(ax) < 6 && Math.abs(ay) < 6) return;
+    axis = Math.abs(ax) > Math.abs(ay) ? 'x' : 'y';
+  }
+  if (axis !== 'x'){ down = false; settle(); return; }
+  e.preventDefault();
+  dx = ax;
+  if (pos === 0 && dx > 0) dx *= 0.3;          // resistance at the start of history
+  card.style.transform = `translateX(${dx}px) rotate(${dx / 26}deg)`;
+  card.style.opacity   = String(Math.max(0.35, 1 - Math.abs(dx) / 380));
+}, {passive:false});
+
+function release(){
+  if (!down) return;
+  down = false;
+  if (axis === 'x' && Math.abs(dx) > THRESH) go(dx < 0 ? 1 : -1);
+  else settle();
+  dx = 0;
+}
+card.addEventListener('touchend', release);
+card.addEventListener('touchcancel', release);
+
+/* ---- buttons & keys ---- */
+document.getElementById('next').addEventListener('click', () => go(1));
+prevB.addEventListener('click', () => go(-1));
+favOnlyB.innerHTML = starSVG(true);
+favOnlyB.addEventListener('click', () => {
+  if (favOnlyB.disabled) return;
+  setFavOnly(!favOnly);
+});
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(1); }
+  if (e.key === 'ArrowLeft')                   { e.preventDefault(); go(-1); }
+  if (e.key === 'f' || e.key === 'F')          { e.preventDefault(); toggleFav(); }
+});
+
+/* stop the page itself from rubber-banding on iOS */
+document.addEventListener('touchmove', e => {
+  if (down && axis === 'x') e.preventDefault();
+}, {passive:false});
+
+/* ---- boot ---- */
+syncFavOnlyB();
+setPool();
+refill();
+stream.push(draw());
+render();
+</script>
+
+</body>
+</html>
