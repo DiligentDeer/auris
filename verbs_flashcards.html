@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>Verb Flashcards</title>
+<style>
+  :root{
+    --sans:"Helvetica Neue",Arial,"Segoe UI",Roboto,sans-serif;
+    --ink:#000;
+    --line:#8a8a8a;
+    --faint:#d8d8d8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:#fff;color:var(--ink);
+            overscroll-behavior:none;overflow:hidden}
+  body{font-family:var(--sans);
+       display:flex;flex-direction:column;align-items:center;
+       padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 10px);
+       -webkit-user-select:none;user-select:none}
+
+  /* progress */
+  .top{width:100%;max-width:430px;flex:0 0 auto}
+  .count{font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:700;
+         display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .count .of{font-weight:400;color:var(--line)}
+  .count .back{color:var(--ink);text-decoration:none;margin-right:14px}
+  .count .back:active{color:var(--line)}
+  .bar{height:1px;background:var(--faint);position:relative}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink);
+         transition:width .2s ease-out}
+
+  /* card stage */
+  .stage{flex:1 1 auto;width:100%;max-width:430px;display:flex;align-items:center;
+         justify-content:center;min-height:0;padding:12px 0}
+  .card{width:100%;border:1px solid var(--line);background:#fff;position:relative;
+        padding:18px 46px 16px 18px;touch-action:pan-y;will-change:transform,opacity}
+
+  /* the star that keeps a card, top right, inside the card */
+  .fav{position:absolute;top:0;right:0;width:44px;height:44px;padding:0;margin:0;
+       border:0;background:none;color:var(--ink);cursor:pointer;
+       display:flex;align-items:center;justify-content:center}
+  .fav:active{background:none;color:var(--ink)}
+
+  .fam{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
+       color:var(--line);margin:0 0 8px}
+  .fam::before{content:"\2756";margin-right:7px;font-weight:400}
+  .v{font-size:30px;font-weight:700;line-height:1.05;letter-spacing:-.3px;margin:0}
+  .mn{font-style:italic;font-size:15px;margin:3px 0 0}
+
+  .sec{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
+       margin:16px 0 6px;padding-top:9px;border-top:1px solid var(--faint)}
+
+  .conj{display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:5px;margin:0}
+  .conj dt{font-size:13px;color:#555;text-align:right;white-space:nowrap}
+  .conj dd{font-size:17px;margin:0;font-variant-numeric:tabular-nums}
+
+  .pair{display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:5px}
+  .pair dt{font-size:13px;color:#555;text-align:right;white-space:nowrap}
+  .pair dd{font-size:17px;margin:0}
+  .tail{display:block;font-size:11px;font-style:italic;color:#666;margin-top:2px}
+
+  @media (min-height:760px){
+    .v{font-size:36px}
+    .conj dd,.pair dd{font-size:19px}
+  }
+
+  /* controls */
+  .ctl{flex:0 0 auto;display:flex;align-items:center;gap:14px;width:100%;max-width:430px;
+       justify-content:center}
+  button{font-family:var(--sans);font-size:22px;line-height:1;color:var(--ink);
+         background:#fff;border:1px solid var(--line);
+         width:64px;height:44px;cursor:pointer;padding:0}
+  button:active{background:var(--ink);color:#fff}
+  button:disabled{color:var(--faint);border-color:var(--faint);cursor:default}
+  button:disabled:active{background:#fff;color:var(--faint)}
+  #favonly{display:flex;align-items:center;justify-content:center}
+  #favonly.on,#favonly.on:active{background:var(--ink);color:#fff}
+  .hint{font-size:10.5px;color:var(--line);text-align:center;margin:7px 0 0;
+        flex:0 0 auto;letter-spacing:.3px}
+
+  @media (min-height:760px){
+    .card{padding:24px 50px 20px 22px}
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="count"><span><a class="back" href="index.html">&#8249; Index</a><span id="n">1</span></span><span class="of">of <span id="total"></span> &middot; <span id="mode">shuffled</span></span></div>
+  <div class="bar"><i id="fill"></i></div>
+</div>
+
+<div class="stage"><div class="card" id="card"></div></div>
+
+<div class="ctl">
+  <button id="prev" aria-label="Previous card">&#8249;</button>
+  <button id="next" aria-label="Next card">&#8250;</button>
+  <button id="favonly" aria-label="Show kept cards only" aria-pressed="false"></button>
+</div>
+<p class="hint">Swipe the card, or use the arrow keys &middot; star keeps a card &middot; the last button shows kept cards only</p>
+
+<script>
+const CARDS = [{"k":"parler","v":"parler","m":"to speak","f":"Regular -ER","p":["parle","parles","parle","parlons","parlez","parlent"],"pc":"ai parlé","im":"parl-"},{"k":"aimer","v":"aimer","m":"to like, to love","f":"Regular -ER","p":["aime","aimes","aime","aimons","aimez","aiment"],"pc":"ai aimé","im":"aim-"},{"k":"donner","v":"donner","m":"to give","f":"Regular -ER","p":["donne","donnes","donne","donnons","donnez","donnent"],"pc":"ai donné","im":"donn-"},{"k":"demander","v":"demander","m":"to ask","f":"Regular -ER","p":["demande","demandes","demande","demandons","demandez","demandent"],"pc":"ai demandé","im":"demand-"},{"k":"passer","v":"passer","m":"to pass, to spend","f":"Regular -ER","p":["passe","passes","passe","passons","passez","passent"],"pc":"suis passé(e)°","im":"pass-"},{"k":"rester","v":"rester","m":"to stay","f":"Regular -ER","p":["reste","restes","reste","restons","restez","restent"],"pc":"suis resté(e)","im":"rest-"},{"k":"arriver","v":"arriver","m":"to arrive","f":"Regular -ER","p":["arrive","arrives","arrive","arrivons","arrivez","arrivent"],"pc":"suis arrivé(e)","im":"arriv-"},{"k":"entrer","v":"entrer","m":"to enter","f":"Regular -ER","p":["entre","entres","entre","entrons","entrez","entrent"],"pc":"suis entré(e)","im":"entr-"},{"k":"rentrer","v":"rentrer","m":"to go home","f":"Regular -ER","p":["rentre","rentres","rentre","rentrons","rentrez","rentrent"],"pc":"suis rentré(e)°","im":"rentr-"},{"k":"tomber","v":"tomber","m":"to fall","f":"Regular -ER","p":["tombe","tombes","tombe","tombons","tombez","tombent"],"pc":"suis tombé(e)","im":"tomb-"},{"k":"monter","v":"monter","m":"to go up","f":"Regular -ER","p":["monte","montes","monte","montons","montez","montent"],"pc":"suis monté(e)°","im":"mont-"},{"k":"retourner","v":"retourner","m":"to go back","f":"Regular -ER","p":["retourne","retournes","retourne","retournons","retournez","retournent"],"pc":"suis retourné(e)°","im":"retourn-"},{"k":"penser","v":"penser","m":"to think","f":"Regular -ER","p":["pense","penses","pense","pensons","pensez","pensent"],"pc":"ai pensé","im":"pens-"},{"k":"trouver","v":"trouver","m":"to find","f":"Regular -ER","p":["trouve","trouves","trouve","trouvons","trouvez","trouvent"],"pc":"ai trouvé","im":"trouv-"},{"k":"retrouver","v":"retrouver","m":"to find again","f":"Regular -ER","p":["retrouve","retrouves","retrouve","retrouvons","retrouvez","retrouvent"],"pc":"ai retrouvé","im":"retrouv-"},{"k":"porter","v":"porter","m":"to wear, to carry","f":"Regular -ER","p":["porte","portes","porte","portons","portez","portent"],"pc":"ai porté","im":"port-"},{"k":"apporter","v":"apporter","m":"to bring","f":"Regular -ER","p":["apporte","apportes","apporte","apportons","apportez","apportent"],"pc":"ai apporté","im":"apport-"},{"k":"emporter","v":"emporter","m":"to take away","f":"Regular -ER","p":["emporte","emportes","emporte","emportons","emportez","emportent"],"pc":"ai emporté","im":"emport-"},{"k":"chercher","v":"chercher","m":"to look for","f":"Regular -ER","p":["cherche","cherches","cherche","cherchons","cherchez","cherchent"],"pc":"ai cherché","im":"cherch-"},{"k":"travailler","v":"travailler","m":"to work","f":"Regular -ER","p":["travaille","travailles","travaille","travaillons","travaillez","travaillent"],"pc":"ai travaillé","im":"travaill-"},{"k":"écouter","v":"écouter","m":"to listen","f":"Regular -ER","p":["écoute","écoutes","écoute","écoutons","écoutez","écoutent"],"pc":"ai écouté","im":"écout-"},{"k":"regarder","v":"regarder","m":"to watch, to look at","f":"Regular -ER","p":["regarde","regardes","regarde","regardons","regardez","regardent"],"pc":"ai regardé","im":"regard-"},{"k":"oublier","v":"oublier","m":"to forget","f":"Regular -ER","p":["oublie","oublies","oublie","oublions","oubliez","oublient"],"pc":"ai oublié","im":"oubli-"},{"k":"arrêter","v":"arrêter","m":"to stop","f":"Regular -ER","p":["arrête","arrêtes","arrête","arrêtons","arrêtez","arrêtent"],"pc":"ai arrêté","im":"arrêt-"},{"k":"fermer","v":"fermer","m":"to close","f":"Regular -ER","p":["ferme","fermes","ferme","fermons","fermez","ferment"],"pc":"ai fermé","im":"ferm-"},{"k":"utiliser","v":"utiliser","m":"to use","f":"Regular -ER","p":["utilise","utilises","utilise","utilisons","utilisez","utilisent"],"pc":"ai utilisé","im":"utilis-"},{"k":"aider","v":"aider","m":"to help","f":"Regular -ER","p":["aide","aides","aide","aidons","aidez","aident"],"pc":"ai aidé","im":"aid-"},{"k":"sauter","v":"sauter","m":"to jump","f":"Regular -ER","p":["saute","sautes","saute","sautons","sautez","sautent"],"pc":"ai sauté","im":"saut-"},{"k":"crier","v":"crier","m":"to shout","f":"Regular -ER","p":["crie","cries","crie","crions","criez","crient"],"pc":"ai crié","im":"cri-"},{"k":"allumer","v":"allumer","m":"to turn on","f":"Regular -ER","p":["allume","allumes","allume","allumons","allumez","allument"],"pc":"ai allumé","im":"allum-"},{"k":"laver","v":"laver","m":"to wash","f":"Regular -ER","p":["lave","laves","lave","lavons","lavez","lavent"],"pc":"ai lavé","im":"lav-"},{"k":"cuisiner","v":"cuisiner","m":"to cook","f":"Regular -ER","p":["cuisine","cuisines","cuisine","cuisinons","cuisinez","cuisinent"],"pc":"ai cuisiné","im":"cuisin-"},{"k":"rencontrer","v":"rencontrer","m":"to meet","f":"Regular -ER","p":["rencontre","rencontres","rencontre","rencontrons","rencontrez","rencontrent"],"pc":"ai rencontré","im":"rencontr-"},{"k":"garder","v":"garder","m":"to keep","f":"Regular -ER","p":["garde","gardes","garde","gardons","gardez","gardent"],"pc":"ai gardé","im":"gard-"},{"k":"laisser","v":"laisser","m":"to leave, to let","f":"Regular -ER","p":["laisse","laisses","laisse","laissons","laissez","laissent"],"pc":"ai laissé","im":"laiss-"},{"k":"détester","v":"détester","m":"to hate","f":"Regular -ER","p":["déteste","détestes","déteste","détestons","détestez","détestent"],"pc":"ai détesté","im":"détest-"},{"k":"adorer","v":"adorer","m":"to adore, to love","f":"Regular -ER","p":["adore","adores","adore","adorons","adorez","adorent"],"pc":"ai adoré","im":"ador-"},{"k":"étudier","v":"étudier","m":"to study","f":"Regular -ER","p":["étudie","étudies","étudie","étudions","étudiez","étudient"],"pc":"ai étudié","im":"étudi-"},{"k":"jouer","v":"jouer","m":"to play","f":"Regular -ER","p":["joue","joues","joue","jouons","jouez","jouent"],"pc":"ai joué","im":"jou-"},{"k":"pleurer","v":"pleurer","m":"to cry","f":"Regular -ER","p":["pleure","pleures","pleure","pleurons","pleurez","pleurent"],"pc":"ai pleuré","im":"pleur-"},{"k":"sembler","v":"sembler","m":"to seem","f":"Regular -ER","p":["semble","sembles","semble","semblons","semblez","semblent"],"pc":"ai semblé","im":"sembl-"},{"k":"montrer","v":"montrer","m":"to show","f":"Regular -ER","p":["montre","montres","montre","montrons","montrez","montrent"],"pc":"ai montré","im":"montr-"},{"k":"marcher","v":"marcher","m":"to walk","f":"Regular -ER","p":["marche","marches","marche","marchons","marchez","marchent"],"pc":"ai marché","im":"march-"},{"k":"ajouter","v":"ajouter","m":"to add","f":"Regular -ER","p":["ajoute","ajoutes","ajoute","ajoutons","ajoutez","ajoutent"],"pc":"ai ajouté","im":"ajout-"},{"k":"tourner","v":"tourner","m":"to turn","f":"Regular -ER","p":["tourne","tournes","tourne","tournons","tournez","tournent"],"pc":"ai tourné","im":"tourn-"},{"k":"continuer","v":"continuer","m":"to continue","f":"Regular -ER","p":["continue","continues","continue","continuons","continuez","continuent"],"pc":"ai continué","im":"continu-"},{"k":"expliquer","v":"expliquer","m":"to explain","f":"Regular -ER","p":["explique","expliques","explique","expliquons","expliquez","expliquent"],"pc":"ai expliqué","im":"expliqu-"},{"k":"quitter","v":"quitter","m":"to leave (a place, a person)","f":"Regular -ER","p":["quitte","quittes","quitte","quittons","quittez","quittent"],"pc":"ai quitté","im":"quitt-"},{"k":"manquer","v":"manquer","m":"to miss, to lack","f":"Regular -ER","p":["manque","manques","manque","manquons","manquez","manquent"],"pc":"ai manqué","im":"manqu-"},{"k":"décider","v":"décider","m":"to decide","f":"Regular -ER","p":["décide","décides","décide","décidons","décidez","décident"],"pc":"ai décidé","im":"décid-"},{"k":"présenter","v":"présenter","m":"to present, to introduce","f":"Regular -ER","p":["présente","présentes","présente","présentons","présentez","présentent"],"pc":"ai présenté","im":"présent-"},{"k":"refuser","v":"refuser","m":"to refuse","f":"Regular -ER","p":["refuse","refuses","refuse","refusons","refusez","refusent"],"pc":"ai refusé","im":"refus-"},{"k":"compter","v":"compter","m":"to count, to intend","f":"Regular -ER","p":["compte","comptes","compte","comptons","comptez","comptent"],"pc":"ai compté","im":"compt-"},{"k":"poser","v":"poser","m":"to put down, to ask (a question)","f":"Regular -ER","p":["pose","poses","pose","posons","posez","posent"],"pc":"ai posé","im":"pos-"},{"k":"pousser","v":"pousser","m":"to push","f":"Regular -ER","p":["pousse","pousses","pousse","poussons","poussez","poussent"],"pc":"ai poussé","im":"pouss-"},{"k":"préparer","v":"préparer","m":"to prepare","f":"Regular -ER","p":["prépare","prépares","prépare","préparons","préparez","préparent"],"pc":"ai préparé","im":"prépar-"},{"k":"cacher","v":"cacher","m":"to hide","f":"Regular -ER","p":["cache","caches","cache","cachons","cachez","cachent"],"pc":"ai caché","im":"cach-"},{"k":"oser","v":"oser","m":"to dare","f":"Regular -ER","p":["ose","oses","ose","osons","osez","osent"],"pc":"ai osé","im":"os-"},{"k":"sauver","v":"sauver","m":"to save","f":"Regular -ER","p":["sauve","sauves","sauve","sauvons","sauvez","sauvent"],"pc":"ai sauvé","im":"sauv-"},{"k":"raconter","v":"raconter","m":"to tell (a story)","f":"Regular -ER","p":["raconte","racontes","raconte","racontons","racontez","racontent"],"pc":"ai raconté","im":"racont-"},{"k":"imaginer","v":"imaginer","m":"to imagine","f":"Regular -ER","p":["imagine","imagines","imagine","imaginons","imaginez","imaginent"],"pc":"ai imaginé","im":"imagin-"},{"k":"remarquer","v":"remarquer","m":"to notice","f":"Regular -ER","p":["remarque","remarques","remarque","remarquons","remarquez","remarquent"],"pc":"ai remarqué","im":"remarqu-"},{"k":"créer","v":"créer","m":"to create","f":"Regular -ER","p":["crée","crées","crée","créons","créez","créent"],"pc":"ai créé","im":"cré-"},{"k":"frapper","v":"frapper","m":"to hit, to knock","f":"Regular -ER","p":["frappe","frappes","frappe","frappons","frappez","frappent"],"pc":"ai frappé","im":"frapp-"},{"k":"toucher","v":"toucher","m":"to touch","f":"Regular -ER","p":["touche","touches","touche","touchons","touchez","touchent"],"pc":"ai touché","im":"touch-"},{"k":"casser","v":"casser","m":"to break","f":"Regular -ER","p":["casse","casses","casse","cassons","cassez","cassent"],"pc":"ai cassé","im":"cass-"},{"k":"terminer","v":"terminer","m":"to finish","f":"Regular -ER","p":["termine","termines","termine","terminons","terminez","terminent"],"pc":"ai terminé","im":"termin-"},{"k":"traverser","v":"traverser","m":"to cross","f":"Regular -ER","p":["traverse","traverses","traverse","traversons","traversez","traversent"],"pc":"ai traversé","im":"travers-"},{"k":"gagner","v":"gagner","m":"to win, to earn","f":"Regular -ER","p":["gagne","gagnes","gagne","gagnons","gagnez","gagnent"],"pc":"ai gagné","im":"gagn-"},{"k":"accepter","v":"accepter","m":"to accept","f":"Regular -ER","p":["accepte","acceptes","accepte","acceptons","acceptez","acceptent"],"pc":"ai accepté","im":"accept-"},{"k":"se réveiller","v":"se réveiller","m":"to wake up","f":"Regular -ER","p":["me réveille","te réveilles","se réveille","nous réveillons","vous réveillez","se réveillent"],"pc":"me suis réveillé(e)","im":"réveill-"},{"k":"éviter","v":"éviter","m":"to avoid","f":"Regular -ER","p":["évite","évites","évite","évitons","évitez","évitent"],"pc":"ai évité","im":"évit-"},{"k":"souhaiter","v":"souhaiter","m":"to wish","f":"Regular -ER","p":["souhaite","souhaites","souhaite","souhaitons","souhaitez","souhaitent"],"pc":"ai souhaité","im":"souhait-"},{"k":"abandonner","v":"abandonner","m":"to give up, to abandon","f":"Regular -ER","p":["abandonne","abandonnes","abandonne","abandonnons","abandonnez","abandonnent"],"pc":"ai abandonné","im":"abandonn-"},{"k":"habiter","v":"habiter","m":"to live (in a place)","f":"Regular -ER","p":["habite","habites","habite","habitons","habitez","habitent"],"pc":"ai habité","im":"habit-"},{"k":"rêver","v":"rêver","m":"to dream","f":"Regular -ER","p":["rêve","rêves","rêve","rêvons","rêvez","rêvent"],"pc":"ai rêvé","im":"rêv-"},{"k":"chanter","v":"chanter","m":"to sing","f":"Regular -ER","p":["chante","chantes","chante","chantons","chantez","chantent"],"pc":"ai chanté","im":"chant-"},{"k":"voler","v":"voler","m":"to fly, to steal","f":"Regular -ER","p":["vole","voles","vole","volons","volez","volent"],"pc":"ai volé","im":"vol-"},{"k":"accompagner","v":"accompagner","m":"to accompany","f":"Regular -ER","p":["accompagne","accompagnes","accompagne","accompagnons","accompagnez","accompagnent"],"pc":"ai accompagné","im":"accompagn-"},{"k":"discuter","v":"discuter","m":"to discuss","f":"Regular -ER","p":["discute","discutes","discute","discutons","discutez","discutent"],"pc":"ai discuté","im":"discut-"},{"k":"inviter","v":"inviter","m":"to invite","f":"Regular -ER","p":["invite","invites","invite","invitons","invitez","invitent"],"pc":"ai invité","im":"invit-"},{"k":"proposer","v":"proposer","m":"to suggest, to offer","f":"Regular -ER","p":["propose","proposes","propose","proposons","proposez","proposent"],"pc":"ai proposé","im":"propos-"},{"k":"réserver","v":"réserver","m":"to book, to reserve","f":"Regular -ER","p":["réserve","réserves","réserve","réservons","réservez","réservent"],"pc":"ai réservé","im":"réserv-"},{"k":"se tromper","v":"se tromper","m":"to be wrong","f":"Regular -ER","p":["me trompe","te trompes","se trompe","nous trompons","vous trompez","se trompent"],"pc":"me suis trompé(e)","im":"tromp-"},{"k":"visiter","v":"visiter","m":"to visit (a place)","f":"Regular -ER","p":["visite","visites","visite","visitons","visitez","visitent"],"pc":"ai visité","im":"visit-"},{"k":"téléphoner","v":"téléphoner","m":"to phone","f":"Regular -ER","p":["téléphone","téléphones","téléphone","téléphonons","téléphonez","téléphonent"],"pc":"ai téléphoné","im":"téléphon-"},{"k":"danser","v":"danser","m":"to dance","f":"Regular -ER","p":["danse","danses","danse","dansons","dansez","dansent"],"pc":"ai dansé","im":"dans-"},{"k":"dessiner","v":"dessiner","m":"to draw","f":"Regular -ER","p":["dessine","dessines","dessine","dessinons","dessinez","dessinent"],"pc":"ai dessiné","im":"dessin-"},{"k":"louer","v":"louer","m":"to rent","f":"Regular -ER","p":["loue","loues","loue","louons","louez","louent"],"pc":"ai loué","im":"lou-"},{"k":"coûter","v":"coûter","m":"to cost","f":"Regular -ER","p":["coûte","coûtes","coûte","coûtons","coûtez","coûtent"],"pc":"ai coûté","im":"coût-"},{"k":"fêter","v":"fêter","m":"to celebrate","f":"Regular -ER","p":["fête","fêtes","fête","fêtons","fêtez","fêtent"],"pc":"ai fêté","im":"fêt-"},{"k":"remercier","v":"remercier","m":"to thank","f":"Regular -ER","p":["remercie","remercies","remercie","remercions","remerciez","remercient"],"pc":"ai remercié","im":"remerci-"},{"k":"conseiller","v":"conseiller","m":"to advise","f":"Regular -ER","p":["conseille","conseilles","conseille","conseillons","conseillez","conseillent"],"pc":"ai conseillé","im":"conseill-"},{"k":"profiter","v":"profiter","m":"to take advantage, to enjoy","f":"Regular -ER","p":["profite","profites","profite","profitons","profitez","profitent"],"pc":"ai profité","im":"profit-"},{"k":"s'installer","v":"s'installer","m":"to settle in","f":"Regular -ER","p":["m'installe","t'installes","s'installe","nous installons","vous installez","s'installent"],"pc":"me suis installé(e)","im":"install-"},{"k":"s'intéresser","v":"s'intéresser","m":"to be interested in","f":"Regular -ER","p":["m'intéresse","t'intéresses","s'intéresse","nous intéressons","vous intéressez","s'intéressent"],"pc":"me suis intéressé(e)","im":"intéress-"},{"k":"se dépêcher","v":"se dépêcher","m":"to hurry","f":"Regular -ER","p":["me dépêche","te dépêches","se dépêche","nous dépêchons","vous dépêchez","se dépêchent"],"pc":"me suis dépêché(e)","im":"dépêch-"},{"k":"se marier","v":"se marier","m":"to get married","f":"Regular -ER","p":["me marie","te maries","se marie","nous marions","vous mariez","se marient"],"pc":"me suis marié(e)","im":"mari-"},{"k":"se reposer","v":"se reposer","m":"to rest","f":"Regular -ER","p":["me repose","te reposes","se repose","nous reposons","vous reposez","se reposent"],"pc":"me suis reposé(e)","im":"repos-"},{"k":"s'excuser","v":"s'excuser","m":"to apologise","f":"Regular -ER","p":["m'excuse","t'excuses","s'excuse","nous excusons","vous excusez","s'excusent"],"pc":"me suis excusé(e)","im":"excus-"},{"k":"s'occuper","v":"s'occuper","m":"to take care of","f":"Regular -ER","p":["m'occupe","t'occupes","s'occupe","nous occupons","vous occupez","s'occupent"],"pc":"me suis occupé(e)","im":"occup-"},{"k":"s'habiller","v":"s'habiller","m":"to get dressed","f":"Regular -ER","p":["m'habille","t'habilles","s'habille","nous habillons","vous habillez","s'habillent"],"pc":"me suis habillé(e)","im":"habill-"},{"k":"se coucher","v":"se coucher","m":"to go to bed","f":"Regular -ER","p":["me couche","te couches","se couche","nous couchons","vous couchez","se couchent"],"pc":"me suis couché(e)","im":"couch-"},{"k":"s'amuser","v":"s'amuser","m":"to have fun","f":"Regular -ER","p":["m'amuse","t'amuses","s'amuse","nous amusons","vous amusez","s'amusent"],"pc":"me suis amusé(e)","im":"amus-"},{"k":"emprunter","v":"emprunter","m":"to borrow","f":"Regular -ER","p":["emprunte","empruntes","emprunte","empruntons","empruntez","empruntent"],"pc":"ai emprunté","im":"emprunt-"},{"k":"prêter","v":"prêter","m":"to lend","f":"Regular -ER","p":["prête","prêtes","prête","prêtons","prêtez","prêtent"],"pc":"ai prêté","im":"prêt-"},{"k":"tuer","v":"tuer","m":"to kill","f":"Regular -ER","p":["tue","tues","tue","tuons","tuez","tuent"],"pc":"ai tué","im":"tu-"},{"k":"enseigner","v":"enseigner","m":"to teach","f":"Regular -ER","p":["enseigne","enseignes","enseigne","enseignons","enseignez","enseignent"],"pc":"ai enseigné","im":"enseign-"},{"k":"commencer","v":"commencer","m":"to start, to begin","f":"-ER, stem change","p":["commence","commences","commence","commen<b>ç</b>ons","commencez","commencent"],"pc":"ai commencé","im":"commenç-†"},{"k":"lancer","v":"lancer","m":"to throw, to launch","f":"-ER, stem change","p":["lance","lances","lance","lan<b>ç</b>ons","lancez","lancent"],"pc":"ai lancé","im":"lanç-†"},{"k":"remplacer","v":"remplacer","m":"to replace","f":"-ER, stem change","p":["remplace","remplaces","remplace","rempla<b>ç</b>ons","remplacez","remplacent"],"pc":"ai remplacé","im":"remplaç-†"},{"k":"avancer","v":"avancer","m":"to move forward","f":"-ER, stem change","p":["avance","avances","avance","avan<b>ç</b>ons","avancez","avancent"],"pc":"ai avancé","im":"avanç-†"},{"k":"prononcer","v":"prononcer","m":"to pronounce","f":"-ER, stem change","p":["prononce","prononces","prononce","pronon<b>ç</b>ons","prononcez","prononcent"],"pc":"ai prononcé","im":"prononç-†"},{"k":"manger","v":"manger","m":"to eat","f":"-ER, stem change","p":["mange","manges","mange","mang<b>e</b>ons","mangez","mangent"],"pc":"ai mangé","im":"mange-†"},{"k":"changer","v":"changer","m":"to change","f":"-ER, stem change","p":["change","changes","change","chang<b>e</b>ons","changez","changent"],"pc":"ai changé","im":"change-†"},{"k":"nager","v":"nager","m":"to swim","f":"-ER, stem change","p":["nage","nages","nage","nag<b>e</b>ons","nagez","nagent"],"pc":"ai nagé","im":"nage-†"},{"k":"voyager","v":"voyager","m":"to travel","f":"-ER, stem change","p":["voyage","voyages","voyage","voyag<b>e</b>ons","voyagez","voyagent"],"pc":"ai voyagé","im":"voyage-†"},{"k":"partager","v":"partager","m":"to share","f":"-ER, stem change","p":["partage","partages","partage","partag<b>e</b>ons","partagez","partagent"],"pc":"ai partagé","im":"partage-†"},{"k":"ranger","v":"ranger","m":"to tidy up","f":"-ER, stem change","p":["range","ranges","range","rang<b>e</b>ons","rangez","rangent"],"pc":"ai rangé","im":"range-†"},{"k":"bouger","v":"bouger","m":"to move","f":"-ER, stem change","p":["bouge","bouges","bouge","boug<b>e</b>ons","bougez","bougent"],"pc":"ai bougé","im":"bouge-†"},{"k":"exiger","v":"exiger","m":"to demand","f":"-ER, stem change","p":["exige","exiges","exige","exig<b>e</b>ons","exigez","exigent"],"pc":"ai exigé","im":"exige-†"},{"k":"obliger","v":"obliger","m":"to force, to oblige","f":"-ER, stem change","p":["oblige","obliges","oblige","oblig<b>e</b>ons","obligez","obligent"],"pc":"ai obligé","im":"oblige-†"},{"k":"protéger","v":"protéger","m":"to protect","f":"-ER, stem change","p":["prot<b>è</b>ge","prot<b>è</b>ges","prot<b>è</b>ge","prot<b>é</b>g<b>e</b>ons","protégez","prot<b>è</b>gent"],"pc":"ai protégé","im":"protége-†"},{"k":"essayer","v":"essayer","m":"to try","f":"-ER, stem change","p":["essa<b>i</b>e","essa<b>i</b>es","essa<b>i</b>e","essayons","essayez","essa<b>i</b>ent"],"pc":"ai essayé","im":"essay-"},{"k":"payer","v":"payer","m":"to pay","f":"-ER, stem change","p":["pa<b>i</b>e","pa<b>i</b>es","pa<b>i</b>e","payons","payez","pa<b>i</b>ent"],"pc":"ai payé","im":"pay-"},{"k":"nettoyer","v":"nettoyer","m":"to clean","f":"-ER, stem change","p":["netto<b>i</b>e","netto<b>i</b>es","netto<b>i</b>e","nettoyons","nettoyez","netto<b>i</b>ent"],"pc":"ai nettoyé","im":"nettoy-"},{"k":"employer","v":"employer","m":"to use, to employ","f":"-ER, stem change","p":["emplo<b>i</b>e","emplo<b>i</b>es","emplo<b>i</b>e","employons","employez","emplo<b>i</b>ent"],"pc":"ai employé","im":"employ-"},{"k":"s'ennuyer","v":"s'ennuyer","m":"to be bored","f":"-ER, stem change","p":["m'ennu<b>i</b>e","t'ennu<b>i</b>es","s'ennu<b>i</b>e","nous ennuyons","vous ennuyez","s'ennu<b>i</b>ent"],"pc":"me suis ennuyé(e)","im":"ennuy-"},{"k":"envoyer","v":"envoyer","m":"to send","f":"-ER, stem change","p":["envo<b>i</b>e","envo<b>i</b>es","envo<b>i</b>e","envoyons","envoyez","envo<b>i</b>ent"],"pc":"ai envoyé","im":"envoy-"},{"k":"acheter","v":"acheter","m":"to buy","f":"-ER, stem change","p":["ach<b>è</b>te","ach<b>è</b>tes","ach<b>è</b>te","achetons","achetez","ach<b>è</b>tent"],"pc":"ai acheté","im":"achet-"},{"k":"se lever","v":"se lever","m":"to get up","f":"-ER, stem change","p":["me l<b>è</b>ve","te l<b>è</b>ves","se l<b>è</b>ve","nous levons","vous levez","se l<b>è</b>vent"],"pc":"me suis levé(e)","im":"lev-"},{"k":"lever","v":"lever","m":"to raise, to lift","f":"-ER, stem change","p":["l<b>è</b>ve","l<b>è</b>ves","l<b>è</b>ve","levons","levez","l<b>è</b>vent"],"pc":"ai levé","im":"lev-"},{"k":"mener","v":"mener","m":"to lead","f":"-ER, stem change","p":["m<b>è</b>ne","m<b>è</b>nes","m<b>è</b>ne","menons","menez","m<b>è</b>nent"],"pc":"ai mené","im":"men-"},{"k":"emmener","v":"emmener","m":"to take (someone) along","f":"-ER, stem change","p":["emm<b>è</b>ne","emm<b>è</b>nes","emm<b>è</b>ne","emmenons","emmenez","emm<b>è</b>nent"],"pc":"ai emmené","im":"emmen-"},{"k":"amener","v":"amener","m":"to bring (someone)","f":"-ER, stem change","p":["am<b>è</b>ne","am<b>è</b>nes","am<b>è</b>ne","amenons","amenez","am<b>è</b>nent"],"pc":"ai amené","im":"amen-"},{"k":"ramener","v":"ramener","m":"to bring back","f":"-ER, stem change","p":["ram<b>è</b>ne","ram<b>è</b>nes","ram<b>è</b>ne","ramenons","ramenez","ram<b>è</b>nent"],"pc":"ai ramené","im":"ramen-"},{"k":"se promener","v":"se promener","m":"to go for a walk","f":"-ER, stem change","p":["me prom<b>è</b>ne","te prom<b>è</b>nes","se prom<b>è</b>ne","nous promenons","vous promenez","se prom<b>è</b>nent"],"pc":"me suis promené(e)","im":"promen-"},{"k":"peser","v":"peser","m":"to weigh","f":"-ER, stem change","p":["p<b>è</b>se","p<b>è</b>ses","p<b>è</b>se","pesons","pesez","p<b>è</b>sent"],"pc":"ai pesé","im":"pes-"},{"k":"enlever","v":"enlever","m":"to remove, to take off","f":"-ER, stem change","p":["enl<b>è</b>ve","enl<b>è</b>ves","enl<b>è</b>ve","enlevons","enlevez","enl<b>è</b>vent"],"pc":"ai enlevé","im":"enlev-"},{"k":"appeler","v":"appeler","m":"to call","f":"-ER, stem change","p":["appel<b>l</b>e","appel<b>l</b>es","appel<b>l</b>e","appelons","appelez","appel<b>l</b>ent"],"pc":"ai appelé","im":"appel-"},{"k":"s'appeler","v":"s'appeler","m":"to be called","f":"-ER, stem change","p":["m'appel<b>l</b>e","t'appel<b>l</b>es","s'appel<b>l</b>e","nous appelons","vous appelez","s'appel<b>l</b>ent"],"pc":"me suis appelé(e)","im":"appel-"},{"k":"se rappeler","v":"se rappeler","m":"to remember","f":"-ER, stem change","p":["me rappel<b>l</b>e","te rappel<b>l</b>es","se rappel<b>l</b>e","nous rappelons","vous rappelez","se rappel<b>l</b>ent"],"pc":"me suis rappelé(e)","im":"rappel-"},{"k":"jeter","v":"jeter","m":"to throw","f":"-ER, stem change","p":["jet<b>t</b>e","jet<b>t</b>es","jet<b>t</b>e","jetons","jetez","jet<b>t</b>ent"],"pc":"ai jeté","im":"jet-"},{"k":"préférer","v":"préférer","m":"to prefer","f":"-ER, stem change","p":["préf<b>è</b>re","préf<b>è</b>res","préf<b>è</b>re","préférons","préférez","préf<b>è</b>rent"],"pc":"ai préféré","im":"préfér-"},{"k":"espérer","v":"espérer","m":"to hope","f":"-ER, stem change","p":["esp<b>è</b>re","esp<b>è</b>res","esp<b>è</b>re","espérons","espérez","esp<b>è</b>rent"],"pc":"ai espéré","im":"espér-"},{"k":"répéter","v":"répéter","m":"to repeat","f":"-ER, stem change","p":["rép<b>è</b>te","rép<b>è</b>tes","rép<b>è</b>te","répétons","répétez","rép<b>è</b>tent"],"pc":"ai répété","im":"répét-"},{"k":"considérer","v":"considérer","m":"to consider","f":"-ER, stem change","p":["consid<b>è</b>re","consid<b>è</b>res","consid<b>è</b>re","considérons","considérez","consid<b>è</b>rent"],"pc":"ai considéré","im":"considér-"},{"k":"s'inquiéter","v":"s'inquiéter","m":"to worry","f":"-ER, stem change","p":["m'inqui<b>è</b>te","t'inqui<b>è</b>tes","s'inqui<b>è</b>te","nous inquiétons","vous inquiétez","s'inqui<b>è</b>tent"],"pc":"me suis inquiété(e)","im":"inquiét-"},{"k":"finir","v":"finir","m":"to finish","f":"Regular -IR","p":["finis","finis","finit","finissons","finissez","finissent"],"pc":"ai fini","im":"finiss-"},{"k":"choisir","v":"choisir","m":"to choose","f":"Regular -IR","p":["choisis","choisis","choisit","choisissons","choisissez","choisissent"],"pc":"ai choisi","im":"choisiss-"},{"k":"réussir","v":"réussir","m":"to succeed","f":"Regular -IR","p":["réussis","réussis","réussit","réussissons","réussissez","réussissent"],"pc":"ai réussi","im":"réussiss-"},{"k":"réfléchir","v":"réfléchir","m":"to think, to reflect","f":"Regular -IR","p":["réfléchis","réfléchis","réfléchit","réfléchissons","réfléchissez","réfléchissent"],"pc":"ai réfléchi","im":"réfléchiss-"},{"k":"remplir","v":"remplir","m":"to fill","f":"Regular -IR","p":["remplis","remplis","remplit","remplissons","remplissez","remplissent"],"pc":"ai rempli","im":"rempliss-"},{"k":"grandir","v":"grandir","m":"to grow up","f":"Regular -IR","p":["grandis","grandis","grandit","grandissons","grandissez","grandissent"],"pc":"ai grandi","im":"grandiss-"},{"k":"grossir","v":"grossir","m":"to put on weight","f":"Regular -IR","p":["grossis","grossis","grossit","grossissons","grossissez","grossissent"],"pc":"ai grossi","im":"grossiss-"},{"k":"maigrir","v":"maigrir","m":"to lose weight","f":"Regular -IR","p":["maigris","maigris","maigrit","maigrissons","maigrissez","maigrissent"],"pc":"ai maigri","im":"maigriss-"},{"k":"vieillir","v":"vieillir","m":"to grow old","f":"Regular -IR","p":["vieillis","vieillis","vieillit","vieillissons","vieillissez","vieillissent"],"pc":"ai vieilli","im":"vieilliss-"},{"k":"rougir","v":"rougir","m":"to blush","f":"Regular -IR","p":["rougis","rougis","rougit","rougissons","rougissez","rougissent"],"pc":"ai rougi","im":"rougiss-"},{"k":"guérir","v":"guérir","m":"to heal, to cure","f":"Regular -IR","p":["guéris","guéris","guérit","guérissons","guérissez","guérissent"],"pc":"ai guéri","im":"guériss-"},{"k":"punir","v":"punir","m":"to punish","f":"Regular -IR","p":["punis","punis","punit","punissons","punissez","punissent"],"pc":"ai puni","im":"puniss-"},{"k":"obéir","v":"obéir","m":"to obey","f":"Regular -IR","p":["obéis","obéis","obéit","obéissons","obéissez","obéissent"],"pc":"ai obéi","im":"obéiss-"},{"k":"réagir","v":"réagir","m":"to react","f":"Regular -IR","p":["réagis","réagis","réagit","réagissons","réagissez","réagissent"],"pc":"ai réagi","im":"réagiss-"},{"k":"agir","v":"agir","m":"to act","f":"Regular -IR","p":["agis","agis","agit","agissons","agissez","agissent"],"pc":"ai agi","im":"agiss-"},{"k":"établir","v":"établir","m":"to establish","f":"Regular -IR","p":["établis","établis","établit","établissons","établissez","établissent"],"pc":"ai établi","im":"établiss-"},{"k":"réunir","v":"réunir","m":"to gather","f":"Regular -IR","p":["réunis","réunis","réunit","réunissons","réunissez","réunissent"],"pc":"ai réuni","im":"réuniss-"},{"k":"nourrir","v":"nourrir","m":"to feed","f":"Regular -IR","p":["nourris","nourris","nourrit","nourrissons","nourrissez","nourrissent"],"pc":"ai nourri","im":"nourriss-"},{"k":"saisir","v":"saisir","m":"to grab, to seize","f":"Regular -IR","p":["saisis","saisis","saisit","saisissons","saisissez","saisissent"],"pc":"ai saisi","im":"saisiss-"},{"k":"ralentir","v":"ralentir","m":"to slow down","f":"Regular -IR","p":["ralentis","ralentis","ralentit","ralentissons","ralentissez","ralentissent"],"pc":"ai ralenti","im":"ralentiss-"},{"k":"ouvrir","v":"ouvrir","m":"to open","f":"-IR, ouvrir type","p":["ouvre","ouvres","ouvre","ouvrons","ouvrez","ouvrent"],"pc":"ai ouvert","im":"ouvr-"},{"k":"couvrir","v":"couvrir","m":"to cover","f":"-IR, ouvrir type","p":["couvre","couvres","couvre","couvrons","couvrez","couvrent"],"pc":"ai couvert","im":"couvr-"},{"k":"découvrir","v":"découvrir","m":"to discover","f":"-IR, ouvrir type","p":["découvre","découvres","découvre","découvrons","découvrez","découvrent"],"pc":"ai découvert","im":"découvr-"},{"k":"offrir","v":"offrir","m":"to offer, to give (a gift)","f":"-IR, ouvrir type","p":["offre","offres","offre","offrons","offrez","offrent"],"pc":"ai offert","im":"offr-"},{"k":"souffrir","v":"souffrir","m":"to suffer","f":"-IR, ouvrir type","p":["souffre","souffres","souffre","souffrons","souffrez","souffrent"],"pc":"ai souffert","im":"souffr-"},{"k":"accueillir","v":"accueillir","m":"to welcome","f":"-IR, ouvrir type","p":["accueille","accueilles","accueille","accueillons","accueillez","accueillent"],"pc":"ai accueilli","im":"accueill-"},{"k":"sortir","v":"sortir","m":"to go out","f":"-IR, partir type","p":["sors","sors","sort","sortons","sortez","sortent"],"pc":"suis sorti(e)°","im":"sort-"},{"k":"partir","v":"partir","m":"to leave","f":"-IR, partir type","p":["pars","pars","part","partons","partez","partent"],"pc":"suis parti(e)","im":"part-"},{"k":"sentir","v":"sentir","m":"to feel, to smell","f":"-IR, partir type","p":["sens","sens","sent","sentons","sentez","sentent"],"pc":"ai senti","im":"sent-"},{"k":"se sentir","v":"se sentir","m":"to feel (well, ill)","f":"-IR, partir type","p":["me sens","te sens","se sent","nous sentons","vous sentez","se sentent"],"pc":"me suis senti(e)","im":"sent-"},{"k":"ressentir","v":"ressentir","m":"to feel (an emotion)","f":"-IR, partir type","p":["ressens","ressens","ressent","ressentons","ressentez","ressentent"],"pc":"ai ressenti","im":"ressent-"},{"k":"dormir","v":"dormir","m":"to sleep","f":"-IR, partir type","p":["dors","dors","dort","dormons","dormez","dorment"],"pc":"ai dormi","im":"dorm-"},{"k":"s'endormir","v":"s'endormir","m":"to fall asleep","f":"-IR, partir type","p":["m'endors","t'endors","s'endort","nous endormons","vous endormez","s'endorment"],"pc":"me suis endormi(e)","im":"endorm-"},{"k":"servir","v":"servir","m":"to serve","f":"-IR, partir type","p":["sers","sers","sert","servons","servez","servent"],"pc":"ai servi","im":"serv-"},{"k":"se servir","v":"se servir","m":"to use, to help oneself","f":"-IR, partir type","p":["me sers","te sers","se sert","nous servons","vous servez","se servent"],"pc":"me suis servi(e)","im":"serv-"},{"k":"mentir","v":"mentir","m":"to lie","f":"-IR, partir type","p":["mens","mens","ment","mentons","mentez","mentent"],"pc":"ai menti","im":"ment-"},{"k":"perdre","v":"perdre","m":"to lose","f":"Regular -RE","p":["perds","perds","perd","perdons","perdez","perdent"],"pc":"ai perdu","im":"perd-"},{"k":"rendre","v":"rendre","m":"to give back","f":"Regular -RE","p":["rends","rends","rend","rendons","rendez","rendent"],"pc":"ai rendu","im":"rend-"},{"k":"se rendre","v":"se rendre","m":"to go (somewhere), to surrender","f":"Regular -RE","p":["me rends","te rends","se rend","nous rendons","vous rendez","se rendent"],"pc":"me suis rendu(e)","im":"rend-"},{"k":"attendre","v":"attendre","m":"to wait for","f":"Regular -RE","p":["attends","attends","attend","attendons","attendez","attendent"],"pc":"ai attendu","im":"attend-"},{"k":"descendre","v":"descendre","m":"to go down","f":"Regular -RE","p":["descends","descends","descend","descendons","descendez","descendent"],"pc":"suis descendu(e)°","im":"descend-"},{"k":"répondre","v":"répondre","m":"to answer","f":"Regular -RE","p":["réponds","réponds","répond","répondons","répondez","répondent"],"pc":"ai répondu","im":"répond-"},{"k":"vendre","v":"vendre","m":"to sell","f":"Regular -RE","p":["vends","vends","vend","vendons","vendez","vendent"],"pc":"ai vendu","im":"vend-"},{"k":"entendre","v":"entendre","m":"to hear","f":"Regular -RE","p":["entends","entends","entend","entendons","entendez","entendent"],"pc":"ai entendu","im":"entend-"},{"k":"défendre","v":"défendre","m":"to defend, to forbid","f":"Regular -RE","p":["défends","défends","défend","défendons","défendez","défendent"],"pc":"ai défendu","im":"défend-"},{"k":"dépendre","v":"dépendre","m":"to depend","f":"Regular -RE","p":["dépends","dépends","dépend","dépendons","dépendez","dépendent"],"pc":"ai dépendu","im":"dépend-"},{"k":"prétendre","v":"prétendre","m":"to claim","f":"Regular -RE","p":["prétends","prétends","prétend","prétendons","prétendez","prétendent"],"pc":"ai prétendu","im":"prétend-"},{"k":"tendre","v":"tendre","m":"to stretch, to hold out","f":"Regular -RE","p":["tends","tends","tend","tendons","tendez","tendent"],"pc":"ai tendu","im":"tend-"},{"k":"étendre","v":"étendre","m":"to spread, to extend","f":"Regular -RE","p":["étends","étends","étend","étendons","étendez","étendent"],"pc":"ai étendu","im":"étend-"},{"k":"fondre","v":"fondre","m":"to melt","f":"Regular -RE","p":["fonds","fonds","fond","fondons","fondez","fondent"],"pc":"ai fondu","im":"fond-"},{"k":"confondre","v":"confondre","m":"to confuse","f":"Regular -RE","p":["confonds","confonds","confond","confondons","confondez","confondent"],"pc":"ai confondu","im":"confond-"},{"k":"correspondre","v":"correspondre","m":"to correspond","f":"Regular -RE","p":["corresponds","corresponds","correspond","correspondons","correspondez","correspondent"],"pc":"ai correspondu","im":"correspond-"},{"k":"mordre","v":"mordre","m":"to bite","f":"Regular -RE","p":["mords","mords","mord","mordons","mordez","mordent"],"pc":"ai mordu","im":"mord-"},{"k":"rompre","v":"rompre","m":"to break (off)","f":"Regular -RE","p":["romps","romps","romp<b>t</b>","rompons","rompez","rompent"],"pc":"ai rompu","im":"romp-"},{"k":"interrompre","v":"interrompre","m":"to interrupt","f":"Regular -RE","p":["interromps","interromps","interromp<b>t</b>","interrompons","interrompez","interrompent"],"pc":"ai interrompu","im":"interromp-"},{"k":"prendre","v":"prendre","m":"to take","f":"-RE, prendre family","p":["prends","prends","prend","prenons","prenez","pren<b>n</b>ent"],"pc":"ai pris","im":"pren-"},{"k":"comprendre","v":"comprendre","m":"to understand","f":"-RE, prendre family","p":["comprends","comprends","comprend","comprenons","comprenez","compren<b>n</b>ent"],"pc":"ai compris","im":"compren-"},{"k":"apprendre","v":"apprendre","m":"to learn","f":"-RE, prendre family","p":["apprends","apprends","apprend","apprenons","apprenez","appren<b>n</b>ent"],"pc":"ai appris","im":"appren-"},{"k":"reprendre","v":"reprendre","m":"to take back, to resume","f":"-RE, prendre family","p":["reprends","reprends","reprend","reprenons","reprenez","repren<b>n</b>ent"],"pc":"ai repris","im":"repren-"},{"k":"surprendre","v":"surprendre","m":"to surprise","f":"-RE, prendre family","p":["surprends","surprends","surprend","surprenons","surprenez","surpren<b>n</b>ent"],"pc":"ai surpris","im":"surpren-"},{"k":"entreprendre","v":"entreprendre","m":"to undertake","f":"-RE, prendre family","p":["entreprends","entreprends","entreprend","entreprenons","entreprenez","entrepren<b>n</b>ent"],"pc":"ai entrepris","im":"entrepren-"},{"k":"dire","v":"dire","m":"to say, to tell","f":"-RE, hidden consonant","p":["dis","dis","dit","disons","<b>dites</b>","disent"],"pc":"ai dit","im":"dis-"},{"k":"interdire","v":"interdire","m":"to forbid","f":"-RE, hidden consonant","p":["interdis","interdis","interdit","interdisons","interdisez","interdisent"],"pc":"ai interdit","im":"interdis-"},{"k":"lire","v":"lire","m":"to read","f":"-RE, hidden consonant","p":["lis","lis","lit","lisons","lisez","lisent"],"pc":"ai lu","im":"lis-"},{"k":"relire","v":"relire","m":"to reread","f":"-RE, hidden consonant","p":["relis","relis","relit","relisons","relisez","relisent"],"pc":"ai relu","im":"relis-"},{"k":"conduire","v":"conduire","m":"to drive","f":"-RE, hidden consonant","p":["conduis","conduis","conduit","conduisons","conduisez","conduisent"],"pc":"ai conduit","im":"conduis-"},{"k":"construire","v":"construire","m":"to build","f":"-RE, hidden consonant","p":["construis","construis","construit","construisons","construisez","construisent"],"pc":"ai construit","im":"construis-"},{"k":"produire","v":"produire","m":"to produce","f":"-RE, hidden consonant","p":["produis","produis","produit","produisons","produisez","produisent"],"pc":"ai produit","im":"produis-"},{"k":"réduire","v":"réduire","m":"to reduce","f":"-RE, hidden consonant","p":["réduis","réduis","réduit","réduisons","réduisez","réduisent"],"pc":"ai réduit","im":"réduis-"},{"k":"traduire","v":"traduire","m":"to translate","f":"-RE, hidden consonant","p":["traduis","traduis","traduit","traduisons","traduisez","traduisent"],"pc":"ai traduit","im":"traduis-"},{"k":"introduire","v":"introduire","m":"to introduce, to insert","f":"-RE, hidden consonant","p":["introduis","introduis","introduit","introduisons","introduisez","introduisent"],"pc":"ai introduit","im":"introduis-"},{"k":"détruire","v":"détruire","m":"to destroy","f":"-RE, hidden consonant","p":["détruis","détruis","détruit","détruisons","détruisez","détruisent"],"pc":"ai détruit","im":"détruis-"},{"k":"cuire","v":"cuire","m":"to cook (food)","f":"-RE, hidden consonant","p":["cuis","cuis","cuit","cuisons","cuisez","cuisent"],"pc":"ai cuit","im":"cuis-"},{"k":"écrire","v":"écrire","m":"to write","f":"-RE, hidden consonant","p":["écris","écris","écrit","écrivons","écrivez","écrivent"],"pc":"ai écrit","im":"écriv-"},{"k":"décrire","v":"décrire","m":"to describe","f":"-RE, hidden consonant","p":["décris","décris","décrit","décrivons","décrivez","décrivent"],"pc":"ai décrit","im":"décriv-"},{"k":"s'inscrire","v":"s'inscrire","m":"to register, to sign up","f":"-RE, hidden consonant","p":["m'inscris","t'inscris","s'inscrit","nous inscrivons","vous inscrivez","s'inscrivent"],"pc":"me suis inscrit(e)","im":"inscriv-"},{"k":"vivre","v":"vivre","m":"to live","f":"-RE, hidden consonant","p":["vis","vis","vit","vivons","vivez","vivent"],"pc":"ai vécu","im":"viv-"},{"k":"survivre","v":"survivre","m":"to survive","f":"-RE, hidden consonant","p":["survis","survis","survit","survivons","survivez","survivent"],"pc":"ai survécu","im":"surviv-"},{"k":"suivre","v":"suivre","m":"to follow","f":"-RE, hidden consonant","p":["suis","suis","suit","suivons","suivez","suivent"],"pc":"ai suivi","im":"suiv-"},{"k":"poursuivre","v":"poursuivre","m":"to pursue, to continue","f":"-RE, hidden consonant","p":["poursuis","poursuis","poursuit","poursuivons","poursuivez","poursuivent"],"pc":"ai poursuivi","im":"poursuiv-"},{"k":"rire","v":"rire","m":"to laugh","f":"-RE, hidden consonant","p":["ris","ris","rit","rions","riez","rient"],"pc":"ai ri","im":"ri-"},{"k":"sourire","v":"sourire","m":"to smile","f":"-RE, hidden consonant","p":["souris","souris","sourit","sourions","souriez","sourient"],"pc":"ai souri","im":"souri-"},{"k":"plaire","v":"plaire","m":"to please","f":"-RE, hidden consonant","p":["plais","plais","pla<b>î</b>t","plaisons","plaisez","plaisent"],"pc":"ai plu","im":"plais-"},{"k":"se taire","v":"se taire","m":"to be quiet","f":"-RE, hidden consonant","p":["me tais","te tais","se tait","nous taisons","vous taisez","se taisent"],"pc":"me suis tu(e)","im":"tais-"},{"k":"mettre","v":"mettre","m":"to put","f":"-TTRE family","p":["mets","mets","met","mettons","mettez","mettent"],"pc":"ai mis","im":"mett-"},{"k":"se mettre","v":"se mettre","m":"to start (to), to put oneself","f":"-TTRE family","p":["me mets","te mets","se met","nous mettons","vous mettez","se mettent"],"pc":"me suis mis(e)","im":"mett-"},{"k":"permettre","v":"permettre","m":"to allow","f":"-TTRE family","p":["permets","permets","permet","permettons","permettez","permettent"],"pc":"ai permis","im":"permett-"},{"k":"promettre","v":"promettre","m":"to promise","f":"-TTRE family","p":["promets","promets","promet","promettons","promettez","promettent"],"pc":"ai promis","im":"promett-"},{"k":"admettre","v":"admettre","m":"to admit","f":"-TTRE family","p":["admets","admets","admet","admettons","admettez","admettent"],"pc":"ai admis","im":"admett-"},{"k":"remettre","v":"remettre","m":"to put back, to hand in","f":"-TTRE family","p":["remets","remets","remet","remettons","remettez","remettent"],"pc":"ai remis","im":"remett-"},{"k":"soumettre","v":"soumettre","m":"to submit","f":"-TTRE family","p":["soumets","soumets","soumet","soumettons","soumettez","soumettent"],"pc":"ai soumis","im":"soumett-"},{"k":"transmettre","v":"transmettre","m":"to pass on, to transmit","f":"-TTRE family","p":["transmets","transmets","transmet","transmettons","transmettez","transmettent"],"pc":"ai transmis","im":"transmett-"},{"k":"battre","v":"battre","m":"to beat","f":"-TTRE family","p":["bats","bats","bat","battons","battez","battent"],"pc":"ai battu","im":"batt-"},{"k":"se battre","v":"se battre","m":"to fight","f":"-TTRE family","p":["me bats","te bats","se bat","nous battons","vous battez","se battent"],"pc":"me suis battu(e)","im":"batt-"},{"k":"combattre","v":"combattre","m":"to fight against","f":"-TTRE family","p":["combats","combats","combat","combattons","combattez","combattent"],"pc":"ai combattu","im":"combatt-"},{"k":"éteindre","v":"éteindre","m":"to turn off","f":"-INDRE family","p":["éteins","éteins","éteint","étei<b>gn</b>ons","étei<b>gn</b>ez","étei<b>gn</b>ent"],"pc":"ai éteint","im":"éteign-"},{"k":"peindre","v":"peindre","m":"to paint","f":"-INDRE family","p":["peins","peins","peint","pei<b>gn</b>ons","pei<b>gn</b>ez","pei<b>gn</b>ent"],"pc":"ai peint","im":"peign-"},{"k":"atteindre","v":"atteindre","m":"to reach","f":"-INDRE family","p":["atteins","atteins","atteint","attei<b>gn</b>ons","attei<b>gn</b>ez","attei<b>gn</b>ent"],"pc":"ai atteint","im":"atteign-"},{"k":"craindre","v":"craindre","m":"to fear","f":"-INDRE family","p":["crains","crains","craint","crai<b>gn</b>ons","crai<b>gn</b>ez","crai<b>gn</b>ent"],"pc":"ai craint","im":"craign-"},{"k":"se plaindre","v":"se plaindre","m":"to complain","f":"-INDRE family","p":["me plains","te plains","se plaint","nous plai<b>gn</b>ons","vous plai<b>gn</b>ez","se plai<b>gn</b>ent"],"pc":"me suis plaint(e)","im":"plaign-"},{"k":"joindre","v":"joindre","m":"to join, to reach (by phone)","f":"-INDRE family","p":["joins","joins","joint","joi<b>gn</b>ons","joi<b>gn</b>ez","joi<b>gn</b>ent"],"pc":"ai joint","im":"joign-"},{"k":"rejoindre","v":"rejoindre","m":"to meet up with, to rejoin","f":"-INDRE family","p":["rejoins","rejoins","rejoint","rejoi<b>gn</b>ons","rejoi<b>gn</b>ez","rejoi<b>gn</b>ent"],"pc":"ai rejoint","im":"rejoign-"},{"k":"vouloir","v":"vouloir","m":"to want","f":"-OIR modal","p":["veux","veux","veut","voulons","voulez","veulent"],"pc":"ai voulu","im":"voul-"},{"k":"pouvoir","v":"pouvoir","m":"to be able to, can","f":"-OIR modal","p":["peux","peux","peut","pouvons","pouvez","peuvent"],"pc":"ai pu","im":"pouv-"},{"k":"devoir","v":"devoir","m":"to have to, must","f":"-OIR modal","p":["dois","dois","doit","devons","devez","doivent"],"pc":"ai dû","im":"dev-"},{"k":"savoir","v":"savoir","m":"to know (a fact)","f":"-OIR modal","p":["sais","sais","sait","savons","savez","savent"],"pc":"ai su","im":"sav-"},{"k":"voir","v":"voir","m":"to see","f":"-OIR family","p":["vois","vois","voit","voyons","voyez","voient"],"pc":"ai vu","im":"voy-"},{"k":"revoir","v":"revoir","m":"to see again","f":"-OIR family","p":["revois","revois","revoit","revoyons","revoyez","revoient"],"pc":"ai revu","im":"revoy-"},{"k":"prévoir","v":"prévoir","m":"to plan, to foresee","f":"-OIR family","p":["prévois","prévois","prévoit","prévoyons","prévoyez","prévoient"],"pc":"ai prévu","im":"prévoy-"},{"k":"croire","v":"croire","m":"to believe","f":"-OIR family","p":["crois","crois","croit","croyons","croyez","croient"],"pc":"ai cru","im":"croy-"},{"k":"boire","v":"boire","m":"to drink","f":"-OIR family","p":["bois","bois","boit","buvons","buvez","boivent"],"pc":"ai bu","im":"buv-"},{"k":"recevoir","v":"recevoir","m":"to receive","f":"-OIR family","p":["reçois","reçois","reçoit","recevons","recevez","reçoivent"],"pc":"ai reçu","im":"recev-"},{"k":"apercevoir","v":"apercevoir","m":"to catch sight of","f":"-OIR family","p":["aperçois","aperçois","aperçoit","apercevons","apercevez","aperçoivent"],"pc":"ai aperçu","im":"apercev-"},{"k":"s'apercevoir","v":"s'apercevoir","m":"to realise","f":"-OIR family","p":["m'aperçois","t'aperçois","s'aperçoit","nous apercevons","vous apercevez","s'aperçoivent"],"pc":"me suis aperçu(e)","im":"apercev-"},{"k":"décevoir","v":"décevoir","m":"to disappoint","f":"-OIR family","p":["déçois","déçois","déçoit","décevons","décevez","déçoivent"],"pc":"ai déçu","im":"décev-"},{"k":"valoir","v":"valoir","m":"to be worth","f":"-OIR family","p":["vaux","vaux","vaut","valons","valez","valent"],"pc":"ai valu","im":"val-"},{"k":"s'asseoir","v":"s'asseoir","m":"to sit down","f":"-OIR family","p":["m'assieds","t'assieds","s'assied","nous asseyons","vous asseyez","s'asseyent"],"pc":"me suis assis(e)","im":"assey-"},{"k":"venir","v":"venir","m":"to come","f":"Venir family","p":["viens","viens","vient","venons","venez","vie<b>nn</b>ent"],"pc":"suis venu(e)","im":"ven-"},{"k":"revenir","v":"revenir","m":"to come back","f":"Venir family","p":["reviens","reviens","revient","revenons","revenez","revie<b>nn</b>ent"],"pc":"suis revenu(e)","im":"reven-"},{"k":"devenir","v":"devenir","m":"to become","f":"Venir family","p":["deviens","deviens","devient","devenons","devenez","devie<b>nn</b>ent"],"pc":"suis devenu(e)","im":"deven-"},{"k":"intervenir","v":"intervenir","m":"to intervene","f":"Venir family","p":["interviens","interviens","intervient","intervenons","intervenez","intervie<b>nn</b>ent"],"pc":"suis intervenu(e)","im":"interven-"},{"k":"parvenir","v":"parvenir","m":"to manage to, to reach","f":"Venir family","p":["parviens","parviens","parvient","parvenons","parvenez","parvie<b>nn</b>ent"],"pc":"suis parvenu(e)","im":"parven-"},{"k":"se souvenir","v":"se souvenir","m":"to remember","f":"Venir family","p":["me souviens","te souviens","se souvient","nous souvenons","vous souvenez","se souvie<b>nn</b>ent"],"pc":"me suis souvenu(e)","im":"souven-"},{"k":"prévenir","v":"prévenir","m":"to warn","f":"Venir family","p":["préviens","préviens","prévient","prévenons","prévenez","prévie<b>nn</b>ent"],"pc":"ai prévenu","im":"préven-"},{"k":"convenir","v":"convenir","m":"to suit, to agree","f":"Venir family","p":["conviens","conviens","convient","convenons","convenez","convie<b>nn</b>ent"],"pc":"ai convenu","im":"conven-"},{"k":"tenir","v":"tenir","m":"to hold","f":"Venir family","p":["tiens","tiens","tient","tenons","tenez","tie<b>nn</b>ent"],"pc":"ai tenu","im":"ten-"},{"k":"obtenir","v":"obtenir","m":"to get, to obtain","f":"Venir family","p":["obtiens","obtiens","obtient","obtenons","obtenez","obtie<b>nn</b>ent"],"pc":"ai obtenu","im":"obten-"},{"k":"appartenir","v":"appartenir","m":"to belong","f":"Venir family","p":["appartiens","appartiens","appartient","appartenons","appartenez","appartie<b>nn</b>ent"],"pc":"ai appartenu","im":"apparten-"},{"k":"retenir","v":"retenir","m":"to hold back, to remember","f":"Venir family","p":["retiens","retiens","retient","retenons","retenez","retie<b>nn</b>ent"],"pc":"ai retenu","im":"reten-"},{"k":"soutenir","v":"soutenir","m":"to support","f":"Venir family","p":["soutiens","soutiens","soutient","soutenons","soutenez","soutie<b>nn</b>ent"],"pc":"ai soutenu","im":"souten-"},{"k":"contenir","v":"contenir","m":"to contain","f":"Venir family","p":["contiens","contiens","contient","contenons","contenez","contie<b>nn</b>ent"],"pc":"ai contenu","im":"conten-"},{"k":"maintenir","v":"maintenir","m":"to maintain","f":"Venir family","p":["maintiens","maintiens","maintient","maintenons","maintenez","maintie<b>nn</b>ent"],"pc":"ai maintenu","im":"mainten-"},{"k":"connaître","v":"connaître","m":"to know (a person, a place)","f":"-aître family","p":["connais","connais","conna<b>î</b>t","connaissons","connaissez","connaissent"],"pc":"ai connu","im":"connaiss-"},{"k":"reconnaître","v":"reconnaître","m":"to recognise","f":"-aître family","p":["reconnais","reconnais","reconna<b>î</b>t","reconnaissons","reconnaissez","reconnaissent"],"pc":"ai reconnu","im":"reconnaiss-"},{"k":"paraître","v":"paraître","m":"to seem, to appear","f":"-aître family","p":["parais","parais","para<b>î</b>t","paraissons","paraissez","paraissent"],"pc":"ai paru","im":"paraiss-"},{"k":"apparaître","v":"apparaître","m":"to appear","f":"-aître family","p":["apparais","apparais","appara<b>î</b>t","apparaissons","apparaissez","apparaissent"],"pc":"suis apparu(e)","im":"apparaiss-"},{"k":"disparaître","v":"disparaître","m":"to disappear","f":"-aître family","p":["disparais","disparais","dispara<b>î</b>t","disparaissons","disparaissez","disparaissent"],"pc":"ai disparu","im":"disparaiss-"},{"k":"naître","v":"naître","m":"to be born","f":"-aître family","p":["nais","nais","na<b>î</b>t","naissons","naissez","naissent"],"pc":"suis né(e)","im":"naiss-"},{"k":"être","v":"être","m":"to be","f":"Irregular","p":["suis","es","est","sommes","êtes","sont"],"pc":"ai été","im":"<b>ét-</b>"},{"k":"avoir","v":"avoir","m":"to have","f":"Irregular","p":["ai","as","a","avons","avez","ont"],"pc":"ai eu","im":"av-"},{"k":"faire","v":"faire","m":"to do, to make","f":"Irregular","p":["fais","fais","fait","faisons","<b>faites</b>","<b>font</b>"],"pc":"ai fait","im":"fais-"},{"k":"refaire","v":"refaire","m":"to redo","f":"Irregular","p":["refais","refais","refait","refaisons","<b>refaites</b>","<b>refont</b>"],"pc":"ai refait","im":"refais-"},{"k":"aller","v":"aller","m":"to go","f":"Irregular","p":["vais","vas","va","allons","allez","vont"],"pc":"suis allé(e)","im":"all-"},{"k":"falloir","v":"falloir","m":"to be necessary","f":"Irregular","p":["—","—","faut","—","—","—"],"pc":"a fallu","im":"fall-"},{"k":"pleuvoir","v":"pleuvoir","m":"to rain","f":"Irregular","p":["—","—","pleut","—","—","—"],"pc":"a plu","im":"pleuv-"},{"k":"courir","v":"courir","m":"to run","f":"Irregular","p":["cours","cours","court","courons","courez","courent"],"pc":"ai couru","im":"cour-"},{"k":"mourir","v":"mourir","m":"to die","f":"Irregular","p":["meurs","meurs","meurt","mourons","mourez","meurent"],"pc":"suis mort(e)","im":"mour-"},{"k":"fuir","v":"fuir","m":"to flee","f":"Irregular","p":["fuis","fuis","fuit","fuyons","fuyez","fuient"],"pc":"ai fui","im":"fuy-"},{"k":"s'enfuir","v":"s'enfuir","m":"to run away","f":"Irregular","p":["m'enfuis","t'enfuis","s'enfuit","nous enfuyons","vous enfuyez","s'enfuient"],"pc":"me suis enfui(e)","im":"enfuy-"},{"k":"résoudre","v":"résoudre","m":"to solve","f":"Irregular","p":["résous","résous","résout","résolvons","résolvez","résolvent"],"pc":"ai résolu","im":"résolv-"},{"k":"convaincre","v":"convaincre","m":"to convince","f":"Irregular","p":["convaincs","convaincs","convainc","convainquons","convainquez","convainquent"],"pc":"ai convaincu","im":"convainqu-"},{"k":"acquérir","v":"acquérir","m":"to acquire","f":"Irregular","p":["acquiers","acquiers","acquiert","acquérons","acquérez","acquièrent"],"pc":"ai acquis","im":"acquér-"}];
+const ALL   = CARDS.length;
+
+const card     = document.getElementById('card');
+const nEl      = document.getElementById('n');
+const totalEl  = document.getElementById('total');
+const modeEl   = document.getElementById('mode');
+const fill     = document.getElementById('fill');
+const prevB    = document.getElementById('prev');
+const favOnlyB = document.getElementById('favonly');
+
+/* ---- the star, one path, drawn in currentColor ---- */
+const STAR_D = 'M12 2.7l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5-4.7-4.6 6.5-.9z';
+function starSVG(on){
+  return '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+         '<path d="' + STAR_D + '" ' +
+         (on ? 'fill="currentColor"'
+             : 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"') +
+         '/></svg>';
+}
+
+/* ---- kept cards ---- */
+const FAV_KEY = 'fav:verbs';
+let favs = new Set();
+try {
+  const raw = localStorage.getItem(FAV_KEY);
+  if (raw){
+    const a = JSON.parse(raw);
+    if (Array.isArray(a)) favs = new Set(a);
+  }
+} catch (err) { /* storage unavailable: the session still works */ }
+
+function saveFavs(){
+  try { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); }
+  catch (err) { /* storage unavailable: the session still works */ }
+}
+
+const favBtn = document.createElement('button');
+favBtn.className = 'fav';
+favBtn.type = 'button';
+favBtn.setAttribute('aria-label', 'Keep this card');
+favBtn.innerHTML = starSVG(false);
+
+/* ---- shuffled bag: every card appears once before any repeats ---- */
+let favOnly = false;
+let pool = [], poolN = 0;
+let bag = [], stream = [], pos = 0, busy = false;
+
+function setPool(){
+  pool = [];
+  for (let i = 0; i < ALL; i++){
+    if (!favOnly || favs.has(CARDS[i].k)) pool.push(i);
+  }
+  poolN = pool.length;
+  totalEl.textContent = poolN;
+  modeEl.textContent = favOnly ? 'favourites' : 'shuffled';
+}
+
+function refill(avoid){
+  const b = pool.slice();
+  for (let i = b.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  // never repeat a card back-to-back across a bag boundary
+  if (avoid !== undefined && b.length > 1 && b[0] === avoid) [b[0], b[b.length-1]] = [b[b.length-1], b[0]];
+  bag = b;
+}
+
+function draw(){
+  if (!bag.length) refill(stream.length ? stream[stream.length-1].i : undefined);
+  const i = bag.shift();
+  return { i, n: poolN - bag.length };
+}
+
+function advance(dir){
+  if (dir > 0){
+    pos++;
+    if (pos === stream.length) stream.push(draw());
+  } else if (pos > 0){
+    pos--;
+  }
+}
+
+/* ---- render ---- */
+function paintStar(){
+  const on = favs.has(CARDS[stream[pos].i].k);
+  favBtn.innerHTML = starSVG(on);
+  favBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+function render(){
+  const e = stream[pos], c = CARDS[e.i];
+  const PRON = ["je","tu","il/elle","nous","vous","ils/elles"];
+  const IMPF_RULE = "+ -ais · -ais · -ait · -ions · -iez · -aient";
+  const elides = s => /^[aeiouéèêàâîôûh]/i.test(s.replace(/<[^>]+>/g, ''));
+  const rows = c.p.map((form, k) => {
+    const label = (k === 0 && elides(form)) ? "j&rsquo;" : PRON[k];
+    return `<dt>${label}</dt><dd>${form}</dd>`;
+  }).join('');
+
+  card.innerHTML =
+    `<p class="fam">${c.f}</p>` +
+    `<p class="v">${c.v}</p>` +
+    `<p class="mn">${c.m}</p>` +
+    `<p class="sec">Pr&eacute;sent</p>` +
+    `<dl class="conj">${rows}</dl>` +
+    `<p class="sec">Pass&eacute; compos&eacute; &middot; Imparfait</p>` +
+    `<dl class="pair">` +
+      `<dt>p.c.</dt><dd>${c.pc}</dd>` +
+      `<dt>impf.</dt><dd>${c.im}<span class="tail">${IMPF_RULE}</span></dd>` +
+    `</dl>`;
+  card.appendChild(favBtn);
+  paintStar();
+
+  nEl.textContent = e.n;
+  fill.style.width = (e.n / Math.max(1, poolN) * 100).toFixed(1) + '%';
+  prevB.disabled = pos === 0;
+}
+
+/* ---- keeping and showing kept cards ---- */
+function syncFavOnlyB(){
+  favOnlyB.disabled = favs.size === 0;
+}
+
+function setFavOnly(on){
+  favOnly = on;
+  favOnlyB.classList.toggle('on', on);
+  favOnlyB.setAttribute('aria-pressed', on ? 'true' : 'false');
+  setPool();
+  bag = []; stream = []; pos = 0;
+  refill();
+  stream.push(draw());
+  render();
+}
+
+function toggleFav(){
+  if (busy || !stream.length) return;
+  const k = CARDS[stream[pos].i].k;
+  if (favs.has(k)) favs.delete(k); else favs.add(k);
+  saveFavs();
+  paintStar();
+  syncFavOnlyB();
+  if (favOnly){
+    if (!favs.size){
+      favOnly = false;
+      favOnlyB.classList.remove('on');
+      favOnlyB.setAttribute('aria-pressed', 'false');
+    }
+    // the card on screen stays; the next draw comes from the new pool
+    setPool();
+    refill(stream[pos].i);
+  }
+}
+
+favBtn.addEventListener('touchstart', e => { e.stopPropagation(); }, {passive:true});
+favBtn.addEventListener('click', e => { e.stopPropagation(); toggleFav(); });
+
+/* ---- transitions ---- */
+function go(dir){
+  if (busy) return;
+  if (dir < 0 && pos === 0) return;
+  busy = true;
+  const W = window.innerWidth;
+  card.style.transition = 'transform .17s ease-in, opacity .17s ease-in';
+  card.style.transform  = `translateX(${-dir * W}px) rotate(${-dir * 4}deg)`;
+  card.style.opacity    = '0';
+  setTimeout(() => {
+    advance(dir);
+    render();
+    card.style.transition = 'none';
+    card.style.transform  = `translateX(${dir * W * 0.3}px)`;
+    card.style.opacity    = '0';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      card.style.transition = 'transform .19s ease-out, opacity .19s ease-out';
+      card.style.transform  = 'none';
+      card.style.opacity    = '1';
+      setTimeout(() => { busy = false; }, 190);
+    }));
+  }, 170);
+}
+
+function settle(){
+  card.style.transition = 'transform .18s ease-out, opacity .18s ease-out';
+  card.style.transform  = 'none';
+  card.style.opacity    = '1';
+}
+
+/* ---- swipe ---- */
+let x0 = 0, y0 = 0, dx = 0, axis = null, down = false;
+const THRESH = 55;
+
+card.addEventListener('touchstart', e => {
+  if (busy || e.touches.length !== 1) return;
+  down = true; axis = null; dx = 0;
+  x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  card.style.transition = 'none';
+}, {passive:true});
+
+card.addEventListener('touchmove', e => {
+  if (!down) return;
+  const ax = e.touches[0].clientX - x0;
+  const ay = e.touches[0].clientY - y0;
+  if (axis === null){
+    if (Math.abs(ax) < 6 && Math.abs(ay) < 6) return;
+    axis = Math.abs(ax) > Math.abs(ay) ? 'x' : 'y';
+  }
+  if (axis !== 'x'){ down = false; settle(); return; }
+  e.preventDefault();
+  dx = ax;
+  if (pos === 0 && dx > 0) dx *= 0.3;          // resistance at the start of history
+  card.style.transform = `translateX(${dx}px) rotate(${dx / 26}deg)`;
+  card.style.opacity   = String(Math.max(0.35, 1 - Math.abs(dx) / 380));
+}, {passive:false});
+
+function release(){
+  if (!down) return;
+  down = false;
+  if (axis === 'x' && Math.abs(dx) > THRESH) go(dx < 0 ? 1 : -1);
+  else settle();
+  dx = 0;
+}
+card.addEventListener('touchend', release);
+card.addEventListener('touchcancel', release);
+
+/* ---- buttons & keys ---- */
+document.getElementById('next').addEventListener('click', () => go(1));
+prevB.addEventListener('click', () => go(-1));
+favOnlyB.innerHTML = starSVG(true);
+favOnlyB.addEventListener('click', () => {
+  if (favOnlyB.disabled) return;
+  setFavOnly(!favOnly);
+});
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(1); }
+  if (e.key === 'ArrowLeft')                   { e.preventDefault(); go(-1); }
+  if (e.key === 'f' || e.key === 'F')          { e.preventDefault(); toggleFav(); }
+});
+
+/* stop the page itself from rubber-banding on iOS */
+document.addEventListener('touchmove', e => {
+  if (down && axis === 'x') e.preventDefault();
+}, {passive:false});
+
+/* ---- boot ---- */
+syncFavOnlyB();
+setPool();
+refill();
+stream.push(draw());
+render();
+</script>
+
+</body>
+</html>
